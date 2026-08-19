@@ -61,6 +61,11 @@ class OllamaEmbeddingProvider:
         payload = {
             "model": self._settings.embedding_model,
             "input": self._apply_prefix(texts, kind, titles),
+            # Ollama evicts idle models after five minutes by default, and the
+            # 8GB generator readily pushes this one out. Reloading it costs the
+            # user ~15s on the next question, for the sake of 0.7GB of RAM, so
+            # it is pinned for longer.
+            "keep_alive": self._settings.embedding_keep_alive,
         }
         try:
             response = self._client.post(
@@ -94,6 +99,8 @@ class OllamaLLMProvider:
             "system": system,
             "prompt": prompt,
             "stream": stream,
+            # Gemma 4 thinks before answering unless told not to.
+            "think": self._settings.enable_thinking,
             "options": {
                 # Ollama defaults this to 2048 whatever the model supports.
                 # Omitting it silently truncates retrieved context.

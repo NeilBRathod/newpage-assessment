@@ -10,7 +10,7 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 from pgvector.sqlalchemy import Vector
-from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, TSVECTOR, UUID
 
 revision: str = "0001"
 down_revision: str | None = None
@@ -31,7 +31,7 @@ def upgrade() -> None:
         sa.Column("source_filename", sa.String(500), nullable=False),
         sa.Column("source_format", sa.String(32), nullable=False),
         sa.Column("duration_s", sa.Float(), nullable=True),
-        sa.Column("participants", sa.ARRAY(sa.String()), nullable=False),
+        sa.Column("participants", ARRAY(sa.String()), nullable=False),
         sa.Column("content_hash", sa.String(64), nullable=False),
         sa.Column("utterance_count", sa.Integer(), nullable=False),
         sa.Column("chunk_count", sa.Integer(), nullable=False),
@@ -77,10 +77,10 @@ def upgrade() -> None:
         sa.Column("seq", sa.Integer(), nullable=False),
         sa.Column("text", sa.Text(), nullable=False),
         sa.Column("context_header", sa.Text(), nullable=False),
-        sa.Column("speakers", sa.ARRAY(sa.String()), nullable=False),
+        sa.Column("speakers", ARRAY(sa.String()), nullable=False),
         sa.Column("start_s", sa.Float(), nullable=False),
         sa.Column("end_s", sa.Float(), nullable=False),
-        sa.Column("utterance_seqs", sa.ARRAY(sa.Integer()), nullable=False),
+        sa.Column("utterance_seqs", ARRAY(sa.Integer()), nullable=False),
         sa.Column("token_estimate", sa.Integer(), nullable=False),
         # Dimensions must match the embedding model. Changing models means a
         # migration here and a full re-embed — vectors from different models are
