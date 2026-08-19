@@ -1,0 +1,65 @@
+# Meeting: Relay Beta Go/No-Go
+# Date: 2026-07-07
+# Duration: 00:51:26
+# Participants: Priya Raman, Marcus Webb, Dana Osei, Jamie Fox, Sofia Reyes, Tom Lindqvist, Ben Cutler
+
+[00:00:05] Priya Raman: Everyone's here, including Ben, which tells you how seriously we're taking this. The question today is whether we start beta on the twentieth. I want to go round and get a straight answer from each of you, and then decide. Marcus, scope first.
+[00:00:23] Marcus Webb: Scope has changed since April and I want to be clear about how. We committed to per-transaction instant settlement. We're delivering per-transaction instant settlement plus batch, because Meridian told us in May that per-transaction alone was useless to them.
+[00:00:41] Ben Cutler: That's more scope, not less. How did that not move the date?
+[00:00:46] Marcus Webb: It did. It's part of why we're talking about the twentieth and not mid-July. But batch turned out to be much smaller than we feared — Dana can explain better than me.
+[00:00:58] Dana Osei: Once settlement is its own service with its own state, a batch is just a settlement with more transactions attached. The hard part was the service, and we'd already decided to build it in April.
+[00:01:12] Ben Cutler: So the April decision to build separately paid for itself.
+[00:01:17] Dana Osei: It did, though not for the reason we made it. We built it separately because the ledger couldn't do the latency. It happens to also be the thing that made batch cheap.
+[00:01:29] Priya Raman: We got lucky, but we got lucky because we made a decision on evidence rather than on the calendar.
+[00:01:37] Marcus Webb: What's out of scope for beta: multi-currency, the merchant portal integration, and scheduled settlement — Elena wants "settle at four and again at nine" and we're not doing that yet. She knows.
+[00:01:52] Priya Raman: Dana, engineering. Straight answer.
+[00:01:56] Dana Osei: The service is done. State machine, ledger write-back, reconciliation, batch. Alerting from the postmortem is in — connection pool and queue depth, both live since the twelfth of June. The merchant queue view Sofia asked for is in.
+[00:02:14] Dana Osei: What's not done: the composite index work Nadia took is in, but the CI check that fails on sequential scans is not. It's about two days.
+[00:02:26] Priya Raman: Is that a beta blocker?
+[00:02:29] Dana Osei: No. It's a "prevents the next incident" thing, not a "this incident" thing. I'd want it before GA, not before beta.
+[00:02:38] Priya Raman: Agreed. Jamie, testing.
+[00:02:42] Jamie Fox: This is where I'm going to be difficult.
+[00:02:45] Priya Raman: Go on.
+[00:02:47] Jamie Fox: We got Northbank sandbox credentials on the second of June, seven weeks after I asked. So I've had five weeks against the real thing, which is enough — I'm not raising that.
+[00:02:59] Jamie Fox: What I'm raising is that we are still testing at staging scale. Production-shaped staging data was my action from the postmortem, and I put a date of the fourteenth of August on it, after beta. Which was the right call then.
+[00:03:16] Jamie Fox: But the thing that caused the fifth of June was a query that behaved differently at production scale. And beta puts real merchants on a service where we have not tested any query at production scale.
+[00:03:31] Dana Osei: Beta volumes are tiny, though. Five design partners.
+[00:03:36] Jamie Fox: Beta volumes are tiny. The tables aren't — settlement writes to tables that already have production history in them. That's the exact shape of the fifth of June.
+[00:03:48] Dana Osei: That's... a good point, actually. I'd been thinking about it as request volume.
+[00:03:55] Priya Raman: What would make you comfortable, Jamie?
+[00:03:58] Jamie Fox: Run EXPLAIN by hand on the twelve queries the settlement service makes, against a production-sized copy. Not the CI check — just once, manually, before we start. That's a day.
+[00:04:12] Dana Osei: I can do that Thursday.
+[00:04:15] Jamie Fox: Then I'm comfortable. That's my only condition.
+[00:04:19] Priya Raman: Let's make it a formal gate. Beta doesn't start until that's done and the results are shared. Sofia?
+[00:04:27] Sofia Reyes: Two things. The incident comms rota exists now — I'm on it, Jamie's on it, we rotate weekly. That gap is closed.
+[00:04:37] Sofia Reyes: The thing I'm still unhappy about is webhooks. Elena raised it in May. It's not in beta. And she was explicit that she cares about it more than she cares about Relay.
+[00:04:50] Marcus Webb: That's true and it's a fair challenge. Webhook retries are a separate piece of work on a separate service. It didn't fit.
+[00:05:00] Sofia Reyes: I understand why. I want it recorded that our most engaged design partner told us in May that the thing she wanted most was reliable webhooks, and in July we're giving her instant settlement instead.
+[00:05:15] Marcus Webb: Recorded, and I don't disagree with you.
+[00:05:19] Priya Raman: What's the actual risk, Sofia? Is she going to walk?
+[00:05:24] Sofia Reyes: No. She'll participate. But she'll participate at about half the intensity, and the feedback we get will be worse for it.
+[00:05:33] Tom Lindqvist: I'd add that she asked me about webhooks again last week. It's not a one-off.
+[00:05:39] Marcus Webb: Then let me commit to something narrow rather than nothing. I'll take webhook retries as the first item after beta starts. Not GA-blocking, but first in the queue.
+[00:05:52] Sofia Reyes: That I can take back to her.
+[00:05:55] Priya Raman: Tom, commercial.
+[00:05:58] Tom Lindqvist: Five design partners confirmed. Meridian, Coastline, two of the mid-market accounts, and Harlow. Pricing is the tiered per-event model, which everyone accepted without much fight, which tells me it's roughly right.
+[00:06:14] Ben Cutler: Or that it's too cheap.
+[00:06:16] Tom Lindqvist: Possibly. But I'd rather find that out with five customers using it than nobody.
+[00:06:23] Ben Cutler: Agreed, for beta. We'll revisit before GA.
+[00:06:28] Priya Raman: Ben, you set an end-of-July marker in May. Where do you sit?
+[00:06:34] Ben Cutler: The twentieth is inside my marker, so I have no objection on those grounds. And the Series B is now looking like late September, which is slightly better than October.
+[00:06:47] Ben Cutler: My only question is GA. First of September was the plan. Is it still real?
+[00:06:54] Marcus Webb: No, and I'd rather say so now. Beta starting the twentieth means four weeks of beta ends the seventeenth of August, and we'll have things to fix. First of September was always tight and it's now not credible. I'd say the end of September.
+[00:07:12] Ben Cutler: Which is the same week as the Series B.
+[00:07:15] Marcus Webb: It is. I'm aware of how that sounds.
+[00:07:19] Ben Cutler: It sounds fine, actually. A product in GA is a better story than a product in beta. I'd rather have a real end of September than a fictional first.
+[00:07:31] Priya Raman: Then let's decide. My read is: go for beta on the twentieth, conditional on Dana's EXPLAIN work being done and shared by Friday. GA moves formally to the end of September, and Marcus updates the board pack. Webhook retries are first in the queue after beta starts. Objections?
+[00:07:53] Jamie Fox: None, with the condition.
+[00:07:55] Dana Osei: None.
+[00:07:57] Sofia Reyes: None.
+[00:07:59] Marcus Webb: Agreed.
+[00:08:01] Tom Lindqvist: Agreed. I'll tell the five partners today.
+[00:08:05] Ben Cutler: Agreed.
+[00:08:07] Priya Raman: Then that's a go. One last thing, and I mean this — back in April we said the thing that would kill us was finding out we were behind in June rather than in April. We didn't do that. Every time something slipped, somebody said so in the room. That's why we're having a calm conversation in July instead of a bad one in September.
+[00:08:31] Dana Osei: It helped that being wrong wasn't punished.
+[00:08:35] Priya Raman: That's the whole trick. Thanks everyone.

@@ -1,0 +1,51 @@
+# Meeting: Postmortem — Settlement Delay, 5 June
+# Date: 2026-06-09
+# Duration: 00:39:44
+# Participants: Priya Raman, Dana Osei, Jamie Fox, Sofia Reyes, Nadia Haddad
+
+[00:00:03] Priya Raman: Usual ground rules. We're here to understand what happened, not who did it. Nobody in this room caused this — the system allowed it. Dana, walk us through the timeline.
+[00:00:17] Dana Osei: On Thursday the fifth at 14:12 UTC, settlement requests started queueing. By 14:30 the queue was about nine thousand deep. We noticed at 15:47 when Sofia forwarded a customer email.
+[00:00:34] Priya Raman: Stop there. Ninety-five minutes to detect, and we detected it because a customer told us.
+[00:00:41] Dana Osei: Yes. That's the worst part of this and it's worse than the outage.
+[00:00:47] Priya Raman: Agreed. Carry on.
+[00:00:50] Dana Osei: Root cause was a database connection pool exhaustion in the settlement service. The pool was sized at twenty. A slow query — the balance lookup — started taking about four seconds instead of forty milliseconds, so connections were held far longer than expected, and the pool drained.
+[00:01:12] Nadia Haddad: Why did the balance lookup get slow?
+[00:01:15] Dana Osei: Because the index it was using stopped being used. We deployed a change on the fourth that added a filter on settlement status to that query. The planner switched to a sequential scan. On a table that was small in staging and is not small in production.
+[00:01:34] Jamie Fox: And staging didn't catch it because staging has about four thousand rows and production has eleven million.
+[00:01:42] Dana Osei: Correct.
+[00:01:44] Priya Raman: So we have three separate failures and I want to name all three.
+One, a query regression we didn't catch. Two, a connection pool with no headroom and no
+alerting. Three, ninety-five minutes of blindness. Any one of those alone is survivable.
+Together they're an outage.
+[00:02:05] Sofia Reyes: Can I add a fourth? From my side, I had no way to tell affected customers what was happening. I knew something was wrong at 15:47. I couldn't tell anyone which of their transactions were stuck until 17:20.
+[00:02:21] Priya Raman: That's a fair fourth. What would have helped?
+[00:02:25] Sofia Reyes: A view of the queue by merchant. Anything, honestly. I was reading Dana's messages in an engineering channel and translating them into customer language in real time, badly.
+[00:02:38] Dana Osei: That's on me. I was in the weeds and I wasn't communicating out.
+[00:02:44] Priya Raman: You were fixing it. That's what you should have been doing. The gap is that there was nobody whose job was to communicate. That's a process failure, not yours.
+[00:02:56] Nadia Haddad: How was it resolved in the end?
+[00:02:59] Dana Osei: I raised the pool to sixty at 16:05, which stopped it getting worse but didn't drain the queue. Then I rolled back the query change at 16:31. The queue cleared by 17:04. Total impact was about two hours and fifty minutes, roughly fourteen thousand delayed settlements.
+[00:03:20] Jamie Fox: Any money lost?
+[00:03:22] Dana Osei: No. Delayed, not lost. Every settlement eventually completed and reconciliation confirmed it. Which, I want to say, is the one thing that worked exactly as designed. We knew nothing had gone missing because PAY-1042 told us.
+[00:03:40] Priya Raman: Worth noting, given the argument we had about whether to build it. Right — actions. Let's be specific about owners and dates or this is just a nice chat.
+[00:03:52] Dana Osei: First one's mine. Alert on connection pool utilisation above seventy percent, and on queue depth above five hundred. That's the ninety-five minutes fixed. I'll have it by Friday the twelfth.
+[00:04:06] Priya Raman: Good.
+[00:04:08] Jamie Fox: Second is mine. Staging gets a production-shaped dataset. Not production data — anonymised and generated, but at production scale. This is the third time in two years that a query has behaved differently in production and I'd like it to be the last.
+[00:04:26] Priya Raman: How long?
+[00:04:28] Jamie Fox: Two weeks of my time, and I can't do it before beta.
+[00:04:33] Priya Raman: Then after beta, but before GA. Put a date on it — the fourteenth of August.
+[00:04:39] Jamie Fox: Fourteenth of August.
+[00:04:42] Nadia Haddad: I'll take the query itself. Add the composite index it needed, and add a check to CI that runs EXPLAIN on the queries we care about and fails if any of them turn into a sequential scan.
+[00:04:56] Dana Osei: That's a good idea. Better than mine, which was "be more careful".
+[00:05:02] Nadia Haddad: Being more careful has a bad track record.
+[00:05:06] Priya Raman: Date?
+[00:05:07] Nadia Haddad: Index this week. The CI check by the end of June.
+[00:05:12] Sofia Reyes: Mine's the communication one. I'd like a named incident communications role in the rota — one person whose only job during an incident is telling customers what's happening. And a simple queue-by-merchant view.
+[00:05:28] Priya Raman: The rota I can do this week. The view is engineering work, so it's a ticket and it queues with everything else. Dana, is it small?
+[00:05:39] Dana Osei: Half a day, roughly. It's a query and a table.
+[00:05:44] Priya Raman: Then do it before beta. Sofia's flying blind otherwise.
+[00:05:49] Dana Osei: Fine.
+[00:05:51] Priya Raman: Last thing. Marcus isn't here, but this costs us time we didn't have. Dana, what does this do to beta?
+[00:06:00] Dana Osei: Realistically a week. The alerting and the merchant view are three days between them, and I lost two days to the incident itself.
+[00:06:10] Priya Raman: Then mid-July becomes late July, and Ben's end-of-July marker becomes very real. I'll talk to Marcus today rather than let him find out in the go/no-go.
+[00:06:22] Dana Osei: I'd appreciate that coming from you.
+[00:06:25] Priya Raman: It should. Thank you all — that was a good postmortem. Honest ones are more useful than comfortable ones.

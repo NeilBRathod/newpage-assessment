@@ -1,0 +1,40 @@
+# Meeting: Relay Sprint 3 Planning
+# Date: 2026-04-28
+# Duration: 00:34:50
+# Participants: Marcus Webb, Dana Osei, Jamie Fox, Aisha Khan
+
+[00:00:05] Marcus Webb: Right, sprint three. Before we pick up tickets — Dana, where are we against the design doc?
+[00:00:13] Dana Osei: Doc's done, Rafael reviewed it last Wednesday. Two changes came out of it, both small. We're building.
+[00:00:22] Marcus Webb: Good. What's in flight?
+[00:00:25] Dana Osei: PAY-1031, the settlement state machine, is basically done — I'm writing tests. PAY-1038, the ledger write-back, is started. PAY-1042 is the reconciliation job, which I haven't touched and which I'm increasingly nervous about.
+[00:00:44] Jamie Fox: Nervous how?
+[00:00:46] Dana Osei: Nervous that it's the thing everyone agreed was important on the fourteenth and it's the thing with no one on it.
+[00:00:55] Marcus Webb: Can it wait a sprint?
+[00:00:57] Dana Osei: It can wait a sprint. It can't wait until beta. If we go into beta without reconciliation we have two systems that both think they know where the money is and no way to tell which one is lying.
+[00:01:12] Marcus Webb: Put it in sprint four and I'll protect it. Nothing gets added to sprint four before PAY-1042.
+[00:01:20] Dana Osei: Thank you.
+[00:01:22] Jamie Fox: Can I raise the sandbox thing? Because it's blocking me and it's been blocking me for eleven days.
+[00:01:29] Marcus Webb: Go on.
+[00:01:31] Jamie Fox: I can't test settlement against Northbank's sandbox because we don't have credentials. I raised it on the seventeenth. It's with their partner team. I've chased twice.
+[00:01:44] Dana Osei: What are you testing against in the meantime?
+[00:01:47] Jamie Fox: A stub I wrote. Which is fine for the happy path and useless for anything else, because I'm guessing at their error responses. I'm testing my guesses about their API, not their API.
+[00:02:00] Marcus Webb: That's not testing.
+[00:02:02] Jamie Fox: No, it isn't. That's my point.
+[00:02:05] Marcus Webb: I'll escalate it. Tom has a relationship with someone senior there, I'll ask him to use it. If we don't have credentials by the fifth I'll treat it as a launch risk and raise it with Priya.
+[00:02:19] Jamie Fox: I'd appreciate that. I don't want to be the person who says in July that we never tested against the real thing.
+[00:02:27] Aisha Khan: On the failure states — I've got flows for all four Dana listed. But I've since found a fifth, and I don't know what to do with it.
+[00:02:37] Dana Osei: Which one?
+[00:02:39] Aisha Khan: Partial success. Settlement succeeds to the merchant but the write-back to the ledger fails. From the merchant's point of view it worked. From our point of view we have no record of it.
+[00:02:53] Dana Osei: That's exactly what reconciliation is for.
+[00:02:56] Aisha Khan: I understand that. My question is what the merchant sees while it's inconsistent. Because right now the design says "settled", and that's true but it's true in a way that might stop being true.
+[00:03:11] Dana Osei: It won't stop being true. The money moved. What's inconsistent is our record of it, not the fact.
+[00:03:20] Aisha Khan: Then say that. If the money moved, "settled" is honest and I'll design it that way. I just needed to know which of the two things was authoritative.
+[00:03:31] Dana Osei: The money moving is authoritative. Always.
+[00:03:35] Aisha Khan: Good. That's a much easier design.
+[00:03:38] Marcus Webb: This is why we do these. Right — sprint commitments. Dana, 1038 and 1031 finish. Jamie, what can you actually do without the sandbox?
+[00:03:51] Jamie Fox: I can build the harness so that when credentials arrive it's a config change, not a week of work. And I can test the state machine directly, that doesn't need Northbank.
+[00:04:03] Marcus Webb: Do that. Aisha?
+[00:04:06] Aisha Khan: Dashboard wireframes. I'd like a review with Sofia in it — she talks to the people who'll actually use this and I don't.
+[00:04:15] Marcus Webb: Book it for late June, once there's something real to look at.
+[00:04:20] Aisha Khan: Fine.
+[00:04:22] Marcus Webb: Anything else? No? Then let's go.

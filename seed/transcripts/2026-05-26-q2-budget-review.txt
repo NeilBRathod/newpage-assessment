@@ -1,0 +1,47 @@
+# Meeting: Q2 Budget Review
+# Date: 2026-05-26
+# Duration: 00:44:08
+# Participants: Ben Cutler, Priya Raman, Marcus Webb, Tom Lindqvist
+
+[00:00:04] Ben Cutler: I'll keep this short because I know none of you enjoy it. Three things: headcount, infrastructure spend, and the Relay budget specifically.
+[00:00:15] Ben Cutler: Headcount first. Priya, you've got two open engineering roles approved from Q1. I want to defer both to Q3.
+[00:00:25] Priya Raman: Can I ask why? Because the answer changes what I say next.
+[00:00:30] Ben Cutler: Because our runway assumption changed. We were modelling on the Series B closing in July. It's now realistically September, possibly October. That's three months of burn I hadn't planned for.
+[00:00:45] Priya Raman: That's a real reason. I don't like it but I understand it.
+[00:00:50] Ben Cutler: I'd rather defer two hires than do a layoff in November.
+[00:00:55] Priya Raman: Agreed. But let me tell you what it costs, so it's a decision and not a surprise. Both roles were for Relay. Dana is currently the only person who understands the settlement service. If Dana goes on holiday in August, Relay stops.
+[00:01:14] Ben Cutler: Is that true or is that a negotiating position?
+[00:01:18] Priya Raman: It's true. Rafael can review the design, he can't pick up the code — he's on the migration until June and then he's on whatever comes after the migration. There is one person.
+[00:01:32] Ben Cutler: What would fix it without a hire?
+[00:01:35] Priya Raman: Move someone internal onto it for the summer. It's not free — whatever they're doing now stops.
+[00:01:43] Ben Cutler: Marcus, what would you give up?
+[00:01:46] Marcus Webb: Honestly? The merchant portal refresh. It's nice-to-have, it's been nice-to-have for two years, and it'll still be nice-to-have in October.
+[00:01:57] Priya Raman: That frees up Nadia. She's good and she's worked on the ledger, which is most of what she'd need to know.
+[00:02:06] Ben Cutler: Then do that. Two hires deferred to Q3, Nadia moves onto Relay, portal refresh stops. Everyone unhappy in proportion.
+[00:02:17] Priya Raman: I can live with it.
+[00:02:19] Ben Cutler: Second thing. Infrastructure. We're at fourteen thousand a month and it's grown nineteen percent quarter on quarter, which is faster than revenue.
+[00:02:31] Priya Raman: A chunk of that is the staging environment, which is sized like production for no reason anyone can remember.
+[00:02:39] Ben Cutler: Can you shrink it?
+[00:02:41] Priya Raman: Yes, and I should have already. I'd guess two thousand a month. But I want to flag that Relay will push this up, not down. A separate settlement service is a separate service — it has its own database, its own instances.
+[00:02:59] Ben Cutler: By how much?
+[00:03:01] Priya Raman: Dana's estimate is eleven hundred a month at beta volumes. I'd plan for fifteen hundred.
+[00:03:08] Ben Cutler: So we shrink staging and Relay eats the saving.
+[00:03:13] Priya Raman: More or less, yes.
+[00:03:16] Ben Cutler: That's an acceptable trade if Relay makes money. Which brings me to the third thing. Marcus — what does Relay actually earn?
+[00:03:26] Marcus Webb: That's got more complicated since I last modelled it. The original model was thirty basis points per transaction. Meridian told us two weeks ago that's unworkable at their volume, and I think they're right.
+[00:03:41] Ben Cutler: So what's the new model?
+[00:03:44] Marcus Webb: Tiered, and priced per settlement event rather than per transaction. Which means if a customer batches eleven thousand payments into one settlement, we charge once.
+[00:03:56] Ben Cutler: That's a lot less money.
+[00:03:58] Marcus Webb: Per event, yes. But I think the volume is much higher, because at thirty basis points per transaction our biggest customers simply won't use it. Revenue on a product nobody uses is zero.
+[00:04:13] Tom Lindqvist: I'll back that. I've had the pricing conversation with four accounts now. Two said no outright.
+[00:04:21] Ben Cutler: Give me a number, Marcus. Not a precise one. An order of magnitude.
+[00:04:27] Marcus Webb: Under the old model, if I'm honest, somewhere between zero and two hundred thousand in year one, and I'd have bet on the low end. Under the new one I'd say four to six hundred thousand, with much more confidence in the floor.
+[00:04:44] Ben Cutler: Then the new model, obviously. Write it up properly and send it to me by the fifth of June. I need it for the board pack.
+[00:04:53] Marcus Webb: You'll have it.
+[00:04:55] Ben Cutler: Last thing, and it's a question not a decision. If the Series B slips to October, and Relay slips to October, we have a quarter where we're spending on something that earns nothing. At what point do we stop?
+[00:05:12] Priya Raman: That's a fair question to ask now rather than in September.
+[00:05:17] Ben Cutler: That's why I'm asking now.
+[00:05:20] Marcus Webb: My honest answer is that if we're not in beta by the end of July, the September GA is gone, and at that point we should talk seriously rather than push.
+[00:05:32] Ben Cutler: Good. Let's make end of July the marker. If beta hasn't started by then, we have a proper conversation about scope rather than everyone quietly working weekends.
+[00:05:44] Priya Raman: I'd much prefer that.
+[00:05:47] Ben Cutler: Right. That's everything. Thank you all.

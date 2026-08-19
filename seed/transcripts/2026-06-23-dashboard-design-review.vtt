@@ -1,0 +1,125 @@
+WEBVTT
+
+NOTE Meeting: Relay Dashboard Design Review
+NOTE Date: 2026-06-23
+NOTE Duration: 00:29:12
+
+1
+00:00:03.000 --> 00:00:12.000
+Aisha Khan: Right. This is the dashboard review. I've got three screens to show you and one argument I want to have.
+
+2
+00:00:13.000 --> 00:00:18.000
+Marcus Webb: I like that you've scheduled the argument.
+
+3
+00:00:19.000 --> 00:00:30.000
+Aisha Khan: It's the honest way round. Screen one is the settlement list. Every settlement, newest first, with status and amount. Nothing surprising.
+
+4
+00:00:31.000 --> 00:00:41.000
+Sofia Reyes: Can I filter by merchant on this? Because after the fifth of June that's the first thing I'd want.
+
+5
+00:00:42.000 --> 00:00:49.000
+Aisha Khan: Yes, filter is there. And that's partly why — I read the postmortem.
+
+6
+00:00:50.000 --> 00:00:56.000
+Sofia Reyes: Then I have no notes on screen one. That's exactly it.
+
+7
+00:00:57.000 --> 00:01:10.000
+Aisha Khan: Screen two is a single settlement. Status, timeline, the underlying transactions, and the webhook delivery attempts.
+
+8
+00:01:11.000 --> 00:01:19.000
+Jamie Fox: The webhook attempts are on here? With retry counts?
+
+9
+00:01:20.000 --> 00:01:29.000
+Aisha Khan: Attempts, timestamps, response codes. Elena asked for it and it seemed daft to put it anywhere else.
+
+10
+00:01:30.000 --> 00:01:42.000
+Jamie Fox: That's genuinely useful for me too. Half my support escalations are 'did the webhook go out', and right now answering that means asking Dana to check logs.
+
+11
+00:01:43.000 --> 00:01:49.000
+Marcus Webb: Good. And it costs us nothing, it's data we already have.
+
+12
+00:01:50.000 --> 00:02:04.000
+Aisha Khan: Screen three is where I want the argument. It's the merchant-facing view — what their customer-facing team sees. And I've deliberately not shown the reconciliation status on it.
+
+13
+00:02:05.000 --> 00:02:10.000
+Marcus Webb: Why not? It's the most accurate thing we have.
+
+14
+00:02:11.000 --> 00:02:27.000
+Aisha Khan: Because it's accurate about the wrong thing. Reconciliation tells you whether our two systems agree. It doesn't tell you whether the merchant got their money. Those come apart, and when they do, showing a merchant 'unreconciled' would make them think their money is missing when it isn't.
+
+15
+00:02:28.000 --> 00:02:35.000
+Marcus Webb: But if they are out of sync, isn't hiding it worse? That feels like we're deciding what they're allowed to know.
+
+16
+00:02:36.000 --> 00:02:49.000
+Aisha Khan: I'd argue we're deciding what's relevant to them. Dana was clear in sprint planning — the money moving is authoritative, our record of it is not. Screen three answers 'did I get my money'. That's the question they're asking.
+
+17
+00:02:50.000 --> 00:02:59.000
+Sofia Reyes: I'll come down on Aisha's side, and I'll say why. I've had the conversation where a customer sees an internal status and reads it as bad news.
+
+18
+00:03:00.000 --> 00:03:08.000
+Sofia Reyes: It took me forty minutes to talk them down from something that was never wrong. Internal states leak internal anxiety.
+
+19
+00:03:09.000 --> 00:03:17.000
+Marcus Webb: Alright. But if we're not showing it, then somebody has to be watching it, and there needs to be an alert.
+
+20
+00:03:18.000 --> 00:03:24.000
+Aisha Khan: Completely agree. It should be on screen one, which is ours, and not screen three, which is theirs.
+
+21
+00:03:25.000 --> 00:03:30.000
+Marcus Webb: Then I withdraw the objection. That's the distinction I was missing.
+
+22
+00:03:31.000 --> 00:03:40.000
+Jamie Fox: One accessibility thing while I'm here. Screen two's status uses colour only — green settled, amber pending, red failed.
+
+23
+00:03:41.000 --> 00:03:48.000
+Aisha Khan: That's a fair catch and it's my mistake. I'll add an icon and a text label to each.
+
+24
+00:03:49.000 --> 00:03:55.000
+Jamie Fox: And the contrast on the amber is under three to one against that background.
+
+25
+00:03:56.000 --> 00:04:01.000
+Aisha Khan: I'll fix both. Thank you, that's the sort of thing I stop seeing.
+
+26
+00:04:02.000 --> 00:04:10.000
+Sofia Reyes: Is there an empty state? For a merchant who has Relay enabled but hasn't settled anything yet.
+
+27
+00:04:11.000 --> 00:04:20.000
+Aisha Khan: There is, but it's weak — it just says 'no settlements'. I'll make it explain how to make one happen.
+
+28
+00:04:21.000 --> 00:04:28.000
+Marcus Webb: Good. Timeline — when can Dana start building against these?
+
+29
+00:04:29.000 --> 00:04:37.000
+Aisha Khan: Screens one and two by Friday. Screen three the following week, since it just changed.
+
+30
+00:04:38.000 --> 00:04:44.000
+Marcus Webb: That works. Anything else? Then I'll let you all have twenty minutes back.
