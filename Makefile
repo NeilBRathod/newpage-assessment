@@ -1,6 +1,7 @@
 .DEFAULT_GOAL := help
 COMPOSE := docker compose
 PY := api/.venv/bin
+TEST_DATABASE_URL := postgresql+psycopg://meetingiq:meetingiq@localhost:5433/meetingiq_test
 
 .PHONY: help
 help: ## Show available targets
@@ -66,9 +67,29 @@ health: ## Print the health report
 
 # ---- quality ----
 
+.PHONY: seed
+seed: ## Ingest the seed corpus (needs `make up` and Ollama)
+	cd api && .venv/bin/alembic upgrade head
+	cd api && .venv/bin/python -m meetingiq.ingest.cli ../seed/transcripts
+
+.PHONY: migrate
+migrate: ## Apply database migrations
+	cd api && .venv/bin/alembic upgrade head
+
 .PHONY: test
-test: ## Run the API test suite (offline — no Postgres or Ollama needed)
+test: ## Run unit tests (offline — no Postgres or Ollama needed)
 	cd api && .venv/bin/pytest -q
+
+.PHONY: test-all
+test-all: testdb ## Run unit and integration tests (needs `make up`)
+	cd api && MEETINGIQ_TEST_DATABASE_URL=$(TEST_DATABASE_URL) .venv/bin/pytest -q
+
+.PHONY: testdb
+testdb: ## Create the integration-test database if it does not exist
+	@$(COMPOSE) exec -T db psql -U $${POSTGRES_USER:-meetingiq} -d postgres \
+		-tc "SELECT 1 FROM pg_database WHERE datname='meetingiq_test'" | grep -q 1 \
+		|| $(COMPOSE) exec -T db psql -U $${POSTGRES_USER:-meetingiq} -d postgres \
+		-c 'CREATE DATABASE meetingiq_test'
 
 .PHONY: lint
 lint: ## Lint and format-check
@@ -80,4 +101,4 @@ fmt: ## Auto-format
 	cd api && .venv/bin/ruff format src tests && .venv/bin/ruff check --fix src tests
 
 .PHONY: check
-check: lint test ## Everything CI runs
+check: lint test-all ## Everything CI runs
