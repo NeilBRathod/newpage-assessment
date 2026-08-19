@@ -23,6 +23,12 @@ over-engineered one.
   2026-08-09; only S3/Cognito/SES/SSM remain on an unmanaged 1GB Lightsail box. Not reusable.)
 - Delivery: phase branches → PR → `main`. I open and merge each PR; merge commits, not squash.
   CI runs lint + tests on every PR.
+- Local setup: Postgres in Docker, app on the host. The API Dockerfile is kept and built in CI
+  as the deployment artifact; `make docker-up` runs the fully containerised stack. See
+  "Where the container boundary sits" below.
+
+All three models are pulled and present locally: `gemma4:12b`, `embeddinggemma:300m`,
+and `gemma4:e4b` (held for the audio stretch).
 
 **Intended outcome:** a running local app with a genuinely useful three-pane UI, a defensible
 RAG pipeline, tests over the parts that matter, an eval harness, and a README that argues
@@ -51,17 +57,39 @@ Three surfaces, not just a chat box:
 ## Architecture
 
 ```
-React (Vite/TS/Tailwind) ──HTTP/SSE──▶ FastAPI ──▶ Postgres 17 + pgvector
-     three panes                          │           meetings, utterances, chunks,
-                                          │           decisions, action_items, query_traces
-                                          ▼
-                                 Ollama on HOST :11434
-                                 gemma4:12b · embeddinggemma:300m
+  ── host ──────────────────────────────────────────┐   ── docker ──────────────┐
+                                                    │                           │
+  React (Vite/TS/Tailwind) ──HTTP/SSE──▶ FastAPI ───┼──▶ Postgres 17 + pgvector │
+       three panes                          │       │    meetings, utterances,  │
+                                            │       │    chunks, decisions,     │
+                                            ▼       │    action_items, traces   │
+                                   Ollama :11434    │                           │
+                        gemma4:12b · embeddinggemma └───────────────────────────┘
 ```
 
-**Ollama runs on the host, not in Docker** — macOS containers get no Metal passthrough, so a
-containerised model would be CPU-only and unusable. Containers reach it via
-`host.docker.internal:11434`. This seam is deliberate and gets documented as such.
+### Where the container boundary sits, and why
+
+**Ollama cannot usefully run in Docker here.** macOS containers get no Metal passthrough, so a
+containerised model falls back to CPU and is unusably slow. That forces Ollama onto the host —
+and once it is there, putting the *API* in a container buys isolation and then immediately
+punches a hole through it (`host.docker.internal`) to reach a host process. Containerising the
+Vite dev server is worse still: file watching on a macOS bind mount needs `usePolling`, which is
+a workaround for a problem created by the container.
+
+So containers are used where they actually pay for themselves:
+
+| | Runs where | Why |
+|---|---|---|
+| Postgres + pgvector | **Docker** | One line vs. asking a reviewer to install Postgres *and* build the pgvector extension |
+| FastAPI | **Host** for dev (`uvicorn --reload`) | Fast reload, direct `localhost:11434` to Ollama, no networking games |
+| Vite | **Host** | Native file watching; no polling workaround |
+| Ollama | **Host** | Metal |
+
+The API `Dockerfile` is still written and **built in CI** — it is the real deployment artifact
+and the thing that would run on Fargate, so it must not silently rot. `make docker-up` runs the
+whole stack containerised for anyone who wants that path, with `host.docker.internal` wired up
+there and only there. This satisfies the brief's "simple containerised solution" without
+pretending a laptop GPU is reachable from inside a container.
 
 ### Repo layout
 
@@ -163,7 +191,7 @@ is a working app with fewer features rather than a feature-rich API with no app.
 | # | Branch | Delivers | Done when |
 |---|---|---|---|
 | 0 | `main` | This plan as `docs/PLAN.md`, `.gitignore`, README stub | Committed directly to `main` |
-| 1 | `phase/01-scaffold` | Compose (Postgres+pgvector, api, web), Makefile, `.env.example`, FastAPI app, pydantic-settings config, structured JSON logging, `/health`, GitHub Actions CI, pytest wired up | `make up` boots; `/health` reports DB + Ollama reachability and model presence; CI green on the PR |
+| 1 | `phase/01-scaffold` | Compose (Postgres only) + host-run app, Makefile (`up`/`dev`/`docker-up`/`test`/`lint`), `.env.example`, FastAPI app, pydantic-settings config, structured JSON logging, `/health`, GitHub Actions CI (incl. API image build), pytest wired up | `make up && make dev` boots; `/health` reports DB + Ollama reachability, model presence and `num_ctx`; CI green on the PR |
 | 2 | `phase/02-corpus` | Transcript format spec + 6–8 synthetic transcripts: recurring participants, decisions revisited across meetings, deliberate cross-meeting references | Corpus committed under `seed/`; format documented before any parser exists to write against it |
 | 3 | `phase/03-ingestion` | Alembic migrations, SQLAlchemy models, parser, speaker-aware chunker, embedding provider (Protocol + Ollama + Fake), storage, content-hash idempotency, `make seed` | `make seed` ingests the corpus; re-running is a no-op; chunker/parser tests green — invariants: no mid-utterance splits, token budget respected, overlap present |
 | 4 | `phase/04-retrieval-rag` | Hybrid retrieval (pgvector + FTS + RRF), metadata filter extraction, prompt assembly with token budgeting, guardrails, citation validation, streaming `/chat` endpoint | Cited answers over the corpus via curl / OpenAPI docs; an unanswerable question refuses without calling the LLM; fusion + guardrail tests green |
@@ -190,8 +218,9 @@ document that explains it.
 
 ## Verification
 
-- `make up` → compose starts; `/health` reports DB reachable, Ollama reachable, both models
-  present, `num_ctx` correct
+- `make up` (Postgres) then `make dev` (API + web on the host) → `/health` reports DB reachable,
+  Ollama reachable, both models present, `num_ctx` large enough for the context budget
+- `make docker-up` → the same app fully containerised, to prove that path still works
 - `make seed` → ingests the corpus; re-running is a no-op (content hash)
 - `make test` → pytest green, no network calls (FakeProvider), covering: parser across formats,
   chunker invariants, RRF fusion, citation validator, filter extraction, ingestion idempotency,
