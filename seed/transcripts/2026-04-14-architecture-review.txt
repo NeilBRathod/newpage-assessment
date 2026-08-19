@@ -1,0 +1,50 @@
+# Meeting: Relay Architecture Review — Ledger Benchmark
+# Date: 2026-04-14
+# Duration: 00:41:15
+# Participants: Priya Raman, Dana Osei, Marcus Webb, Rafael Ortiz
+
+[00:00:03] Priya Raman: Rafael's joining us for this one — he built most of the ledger originally, so if anyone can tell us we're wrong it's him.
+[00:00:12] Rafael Ortiz: I'll do my best.
+[00:00:15] Priya Raman: Dana, you've got the floor. What did the numbers say?
+[00:00:19] Dana Osei: They said I was right to worry, which I take no pleasure in.
+[00:00:25] Dana Osei: So. I ran the existing ledger write path under synthetic load shaped like what we'd expect from Relay. Single transaction, end to end, from API accept to a committed ledger entry. Median was eight hundred and forty milliseconds. That's fine.
+[00:00:44] Dana Osei: The problem is the tail. p99 was four point two seconds. And under sustained load, at about six hundred transactions a second, it degrades badly — p99 goes past eleven seconds and the queue starts backing up.
+[00:01:01] Marcus Webb: What's causing that?
+[00:01:04] Dana Osei: Two things. The bigger one is that every write takes an advisory lock on the account row and holds it through reconciliation. Reconciliation does a fair amount of work — it walks the pending entries, recomputes the running balance, writes an audit record. That's all fine when you're doing it in a nightly batch. It's not fine when you're doing it while someone watches a spinner.
+[00:01:31] Rafael Ortiz: That's accurate, and it was deliberate. The lock is what makes the ledger correct. We chose correctness over throughput because at the time there was no case where anyone cared about latency.
+[00:01:45] Dana Osei: I'm not criticising the design. It's a good design for what it was for.
+[00:01:51] Rafael Ortiz: I know. I'm agreeing with you. I'm saying the property you need and the property it was built for are different properties.
+[00:02:00] Priya Raman: Could we make reconciliation asynchronous? Commit the entry, reconcile after?
+[00:02:07] Rafael Ortiz: You could. But then the balance is wrong for a window, and everything downstream that reads a balance has to understand that. That's not a change to the ledger, that's a change to every consumer of the ledger. There are, what, nine services reading balances?
+[00:02:25] Dana Osei: Eleven.
+[00:02:27] Rafael Ortiz: Eleven. So that's not a two-week job either.
+[00:02:31] Marcus Webb: What's the second thing? You said there were two.
+[00:02:35] Dana Osei: The second is smaller but it's nastier. The ledger's state machine assumes a transaction is either pending or settled. Relay needs a third state — settled to the merchant but not yet cleared from the originating bank. We're fronting the money. That's a genuinely different thing and the current model can't express it.
+[00:02:57] Dana Osei: I could add it. But adding a state to a state machine that eleven services read from means touching all eleven.
+[00:03:07] Priya Raman: So option one is more work than it looked, not less.
+[00:03:11] Dana Osei: That's my conclusion, yes.
+[00:03:14] Marcus Webb: Can I push back for a second? Not on the numbers, on the framing. We said thirty percent capacity a week ago. Now we're saying six hundred a second is a problem. What volume are we actually expecting at beta?
+[00:03:30] Dana Osei: At beta, maybe twenty a second peak. Nowhere near it.
+[00:03:35] Marcus Webb: So we're rearchitecting for a load we won't see for a year?
+[00:03:40] Dana Osei: No — and this is the important part. The throughput isn't what worries me. It's the p99 at low load. Four point two seconds at median load, today, with no contention. That's not a scaling problem, that's a "the product doesn't work" problem. Aisha's spinner is spinning for four seconds one time in a hundred, at launch, with twenty transactions a second.
+[00:04:05] Marcus Webb: Okay. That's a different argument and it's a much better one.
+[00:04:10] Priya Raman: Rafael, if we build a separate settlement service — realistically, how long?
+[00:04:16] Rafael Ortiz: Depends what it owns. If it owns its own state and writes to the ledger asynchronously as a record of what happened, rather than asking the ledger for permission — that's a much smaller service than people think. Three weeks for something real, maybe four.
+[00:04:34] Dana Osei: That matches my estimate. I said three to four in my notes.
+[00:04:39] Marcus Webb: And extending the ledger?
+[00:04:42] Dana Osei: Honestly? Now that I've looked properly, five to six. Because it's eleven services, and each one is somebody else's team's calendar.
+[00:04:53] Marcus Webb: Right. Well, that settles it, doesn't it. The safe option is also the slow option.
+[00:05:00] Priya Raman: Then we're reversing last week's decision. We build a separate settlement service. Dana owns it. Rafael, can you spare time for design review?
+[00:05:11] Rafael Ortiz: I can do design review. I can't do implementation, I'm on the migration until June.
+[00:05:18] Priya Raman: Design review is what I need.
+[00:05:21] Marcus Webb: For the record, I was wrong last week and Dana was right to want data. I'd have shipped us into a wall.
+[00:05:29] Priya Raman: You were reasonable last week with the information we had. That's why we booked this meeting. This is the system working, not the system failing.
+[00:05:39] Dana Osei: One thing I want to flag now, while we're all here. If settlement is its own service with its own state, then reconciliation between it and the ledger becomes a thing that can drift. We need to design for that on day one — a reconciliation job, alerting on divergence. If we bolt that on later we will regret it.
+[00:06:01] Priya Raman: Put it in the design. I'd rather lose three days now than find out in October.
+[00:06:08] Rafael Ortiz: Strongly agree. Drift between two sources of truth about money is the worst class of bug we have.
+[00:06:16] Priya Raman: What does this do to the date, Marcus?
+[00:06:19] Marcus Webb: If Dana's right about three to four weeks, we're roughly where we were. It eats the slack I didn't have, but the first of September survives. Beta mid-July is going to be uncomfortable.
+[00:06:33] Priya Raman: Let's hold both dates for now and look again at the end of the month.
+[00:06:39] Marcus Webb: Agreed.
+[00:06:41] Priya Raman: Good. Dana, design doc by the twenty-first, review with Rafael that week.
+[00:06:48] Dana Osei: Will do.

@@ -1,0 +1,33 @@
+Tom Lindqvist (00:00:02): Thanks for making the time, Elena. I've got Marcus who runs product for Relay, and Sofia who looks after your account day to day.
+Elena Vasquez (0:11): Good to meet you both. I've got about forty minutes, then I have to go and explain to my board why our payment costs went up.
+Marcus Webb (0:21): Then I'll be quick. We're building instant settlement. I wanted to show you where we've got to and, more usefully, hear what would make it useless to you.
+Elena Vasquez (0:33): I appreciate the framing. Most vendors ask what would make it wonderful.
+Marcus Webb (0:39): Wonderful is easy to say yes to and hard to learn from.
+Elena Vasquez (0:44): Right. So — the honest answer is that instant settlement on a single transaction doesn't do much for me. We take about eleven thousand payments a day. I don't care when any individual one lands. I care about when the day's takings land, because that's what my treasury team works from.
+Marcus Webb (1:05): So batch settlement rather than per-transaction.
+Elena Vasquez (1:09): Batch, on a schedule I control. If I could say "settle everything at four and again at nine", that's worth real money to me. Per-transaction instant is a solution to a problem I don't have.
+Sofia Reyes (1:22): That matches what I hear from your ops team, for what it's worth. They batch everything.
+Marcus Webb (1:29): That's genuinely useful and it's not what we've built. Let me be straight with you — the first release is per-transaction. Batch is a fast follow, but I'm not going to promise you a date in this call.
+Elena Vasquez (1:44): I'd rather that than a date you miss.
+Tom Lindqvist (1:48): What about the fee? Thirty basis points on top of standard.
+Elena Vasquez (1:54): On eleven thousand transactions a day? No. Not a chance. That's not a negotiation, that's arithmetic. At our volume that's a number my CFO will simply refuse.
+Marcus Webb (2:07): What would work?
+Elena Vasquez (2:09): Tiered, obviously. And I'd want the tier to apply to the batch, not per transaction inside it. If you charge me thirty basis points eleven thousand times to move one lump of money once, I'll do it myself with a bank transfer.
+Tom Lindqvist (2:26): That's fair.
+Elena Vasquez (2:28): There's a second thing, and it matters more than the price. Your webhooks.
+Sofia Reyes (2:34): Go on.
+Elena Vasquez (2:36): When a payment settles, you send us a webhook, and we reconcile against it. If the webhook doesn't arrive, we don't know. And your webhooks do not always arrive. We had a gap in March — about four hundred events over two hours — and we found out because a human noticed the numbers were wrong.
+Sofia Reyes (2:57): I remember that. That was the incident on the eleventh.
+Elena Vasquez (3:02): It was. And the resolution was that you replayed them when I asked. Which is fine, except I had to know to ask. There's no retry, and there's no way for me to say "give me everything from the last six hours" and check.
+Marcus Webb (3:18): So retries with backoff, and a replay endpoint I can query by time range.
+Elena Vasquez (3:24): Yes. And if you build that, I'd care about it more than instant settlement. Considerably more.
+Marcus Webb (3:32): That's a hard thing to hear and a useful thing to hear.
+Elena Vasquez (3:37): I'm not saying don't build Relay. I'm saying you asked what would make it useless, and the answer is: making settlement instant while I still can't reliably find out that it happened.
+Marcus Webb (3:50): Understood. I'm writing that down in those words.
+Tom Lindqvist (3:55): Elena, would you be a design partner for the beta? Mid-July, roughly.
+Elena Vasquez (4:01): If batch is in it, yes. If it's per-transaction only, I'll take it but I won't be a useful partner, because nobody here will use it.
+Marcus Webb (4:12): That's a straight answer. Let me take it back and see what's possible.
+Elena Vasquez (4:18): Do. And Sofia — the webhook thing. Can someone give me a number on that before Relay? It's affecting us now.
+Sofia Reyes (4:27): I'll chase it and come back to you this week either way.
+Elena Vasquez (4:32): Thank you. Right, I have to go and be shouted at.
+Tom Lindqvist (4:37): Good luck.

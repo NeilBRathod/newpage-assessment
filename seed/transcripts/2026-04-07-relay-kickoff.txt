@@ -1,0 +1,56 @@
+# Meeting: Relay Kickoff
+# Date: 2026-04-07
+# Duration: 00:48:32
+# Participants: Priya Raman, Marcus Webb, Dana Osei, Aisha Khan, Tom Lindqvist
+
+[00:00:06] Priya Raman: Alright, I think we're all here. Aisha, can you hear us? Your camera's on but you're muted.
+[00:00:14] Aisha Khan: Sorry. Yes, I'm here.
+[00:00:17] Priya Raman: Great. So this is the kickoff for Relay. Marcus is going to walk through scope, then I want to spend the back half on architecture, because I think that's where the risk is.
+[00:00:29] Marcus Webb: Thanks. So, Relay. The one-line version is instant settlement for our existing payments customers. Today when a merchant takes a payment through us, the money lands in their account in two to three business days. Relay makes that under a minute, for a fee.
+[00:00:51] Marcus Webb: The reason we're doing it now is competitive. Two of our top ten accounts have asked about it in the last quarter, and Fenwick shipped something similar in February.
+[00:01:04] Tom Lindqvist: Three accounts. Meridian asked again last week, I forwarded it to you.
+[00:01:09] Marcus Webb: Three, then. Even better.
+[00:01:13] Priya Raman: What's the target date?
+[00:01:15] Marcus Webb: GA on the first of September. I'd want beta with a handful of design partners about six weeks before that, so mid-July.
+[00:01:26] Dana Osei: That's tight.
+[00:01:28] Marcus Webb: It is tight. I'm not going to pretend otherwise. But the scope is genuinely narrow — we're not building a new payment rail, we're building a faster path through one we already own.
+[00:01:41] Priya Raman: Let's come back to whether it's achievable once we've talked about how we'd build it. Aisha, anything from a design point of view before we go technical?
+[00:01:52] Aisha Khan: Only that "instant" is a promise, and we should be careful how we show it. If settlement takes forty seconds, a spinner for forty seconds feels broken. I'd want to design for the failure and delay cases first, not last.
+[00:02:09] Priya Raman: Noted, and agreed. Right — architecture. Dana, you've had the most time with this.
+[00:02:16] Dana Osei: So there are two obvious options. One, we extend the existing ledger service to handle instant settlement as a new transaction type. Two, we stand up a separate settlement service that talks to the ledger but owns its own state.
+[00:02:33] Dana Osei: Option one is less work up front. The ledger already has the account model, the reconciliation logic, the audit trail. We'd add a transaction type and a new state machine and we'd be most of the way there.
+[00:02:48] Dana Osei: Option two is more work but it isolates the risk. If Relay has a bad day, it doesn't take standard settlement down with it.
+[00:02:58] Priya Raman: What's the ledger's current load look like?
+[00:03:02] Dana Osei: Comfortable. We're at maybe thirty percent of what it'll take before we'd need to think about it.
+[00:03:10] Marcus Webb: Then option one, surely? We're on a fourteen-week clock. Building a whole new service to be safe from a problem we don't have yet feels like the definition of premature.
+[00:03:23] Dana Osei: Maybe. My hesitation is latency. The ledger was built for batch — it does a lot of work per transaction because nothing was ever in a hurry. I don't know off the top of my head whether it can do sub-second.
+[00:03:39] Priya Raman: Do you have numbers?
+[00:03:41] Dana Osei: Not real ones. I have a feeling, which isn't the same thing.
+[00:03:47] Priya Raman: No, it isn't. Okay — here's what I want to do. I don't want to spend three weeks building a service we didn't need. So let's provisionally go with option one, extend the ledger, and Dana, you benchmark it properly. If the numbers say the ledger can't do it, we revisit, and we revisit fast, not in six weeks.
+[00:04:09] Dana Osei: That's fair. Give me a week.
+[00:04:12] Priya Raman: Take a week. Let's put a review on the calendar for the fourteenth specifically to look at that data.
+[00:04:20] Marcus Webb: I'm happy with that. To be clear, the decision today is we build on the ledger?
+[00:04:26] Priya Raman: Provisionally, yes. Conditional on the benchmark.
+[00:04:31] Tom Lindqvist: Can I ask a commercial question while we're here? What's the fee?
+[00:04:36] Marcus Webb: Working assumption is thirty basis points on top of standard processing. That's under Fenwick, who are at forty.
+[00:04:45] Tom Lindqvist: Meridian will push back on that. They push back on everything, but they'll push back on that particularly.
+[00:04:52] Marcus Webb: They can have volume tiers. I'd rather not design the pricing in this meeting.
+[00:04:58] Tom Lindqvist: Fine. But I want to be in the room when you do.
+[00:05:02] Marcus Webb: You will be.
+[00:05:05] Priya Raman: Let's talk about what happens in the next two weeks. Dana, benchmark, back on the fourteenth. Marcus, I want the scope written down somewhere I can read it — what's in, and specifically what's out.
+[00:05:19] Marcus Webb: I'll have a one-pager by Friday.
+[00:05:22] Priya Raman: Aisha, can you start on the flows? Particularly the ones where it doesn't work.
+[00:05:28] Aisha Khan: Yes. I'll need to know what the failure modes actually are, though, and that depends on the architecture.
+[00:05:36] Dana Osei: I can give you a list of the ones that exist regardless of which option we pick. Insufficient funds, account frozen, downstream bank rejects, timeout. Those four are true either way.
+[00:05:50] Aisha Khan: That's enough to start.
+[00:05:53] Priya Raman: Tom, anything you need from us?
+[00:05:56] Tom Lindqvist: I need to know what I can say to customers and when. Meridian's asking now.
+[00:06:03] Marcus Webb: Say we're working on it, no dates. If we tell Meridian July and we slip, that's worse than telling them nothing.
+[00:06:12] Tom Lindqvist: I've been doing this a while, Marcus.
+[00:06:15] Marcus Webb: I know. Sorry.
+[00:06:18] Priya Raman: One more thing, and it's the thing I actually worry about. We have a
+fourteen-week plan and no slack in it. So I want us to be honest early. If we're behind on the
+fourteenth, I'd much rather know on the fourteenth than in June.
+[00:06:36] Dana Osei: Understood.
+[00:06:38] Priya Raman: Good. Let's leave it there. Dana, the fourteenth.
+[00:06:43] Dana Osei: The fourteenth.
