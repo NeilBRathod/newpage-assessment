@@ -1,0 +1,127 @@
+"""Database models.
+
+The schema keeps utterances and chunks as separate tables rather than storing
+chunk text alone. Utterances are the ground truth a citation points at — the
+evidence panel needs to show the exact turn at the exact timestamp — while
+chunks are a derived retrieval artefact. Keeping them apart means the chunking
+strategy can change without touching the record of what was actually said.
+"""
+
+import uuid
+from datetime import date, datetime
+
+import sqlalchemy as sa
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import (
+    ARRAY,
+    BigInteger,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
+from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from meetingiq.db import Base
+
+
+class Meeting(Base):
+    __tablename__ = "meetings"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title: Mapped[str] = mapped_column(String(500))
+    meeting_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    source_filename: Mapped[str] = mapped_column(String(500))
+    source_format: Mapped[str] = mapped_column(String(32))
+    duration_s: Mapped[float | None] = mapped_column(Float, nullable=True)
+    participants: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+
+    # sha256 of the raw file. Re-ingesting an unchanged transcript is a no-op,
+    # which keeps `make seed` cheap to run repeatedly while tuning retrieval.
+    content_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+
+    utterance_count: Mapped[int] = mapped_column(Integer, default=0)
+    chunk_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    utterances: Mapped[list["Utterance"]] = relationship(
+        back_populates="meeting", cascade="all, delete-orphan", order_by="Utterance.seq"
+    )
+    chunks: Mapped[list["Chunk"]] = relationship(
+        back_populates="meeting", cascade="all, delete-orphan", order_by="Chunk.seq"
+    )
+
+
+class Utterance(Base):
+    """One speaker turn. The unit a citation resolves to."""
+
+    __tablename__ = "utterances"
+    __table_args__ = (UniqueConstraint("meeting_id", "seq", name="uq_utterance_meeting_seq"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    meeting_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("meetings.id", ondelete="CASCADE"), index=True
+    )
+    seq: Mapped[int] = mapped_column(Integer)
+    speaker: Mapped[str] = mapped_column(String(200), index=True)
+    start_s: Mapped[float] = mapped_column(Float)
+    end_s: Mapped[float] = mapped_column(Float)
+    text: Mapped[str] = mapped_column(Text)
+
+    meeting: Mapped[Meeting] = relationship(back_populates="utterances")
+
+
+class Chunk(Base):
+    """A retrieval unit: a group of consecutive turns, embedded together."""
+
+    __tablename__ = "chunks"
+    __table_args__ = (
+        UniqueConstraint("meeting_id", "seq", name="uq_chunk_meeting_seq"),
+        # Hybrid retrieval reads both of these; see retrieval/hybrid.py.
+        Index(
+            "ix_chunks_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+        Index("ix_chunks_tsv", "tsv", postgresql_using="gin"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    meeting_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("meetings.id", ondelete="CASCADE"), index=True
+    )
+    seq: Mapped[int] = mapped_column(Integer)
+
+    # Speaker-prefixed turn text, e.g. "Dana Osei: ...\nPriya Raman: ...".
+    # Speaker names are kept inline so full-text search can match on them.
+    text: Mapped[str] = mapped_column(Text)
+
+    # Synthetic "Meeting | Date | Speakers | time range" line, prepended before
+    # embedding so the vector captures who and when, not only what. Stored
+    # separately from `text` so it never appears in a quoted citation.
+    context_header: Mapped[str] = mapped_column(Text)
+
+    speakers: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+    start_s: Mapped[float] = mapped_column(Float)
+    end_s: Mapped[float] = mapped_column(Float)
+    # Which utterances this chunk covers, for resolving citations back to turns.
+    utterance_seqs: Mapped[list[int]] = mapped_column(ARRAY(Integer), default=list)
+    token_estimate: Mapped[int] = mapped_column(Integer, default=0)
+
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(768), nullable=True)
+    # Generated by Postgres from `text`, so it can never drift out of step with
+    # it. Declared Computed here too, otherwise SQLAlchemy tries to INSERT it.
+    tsv: Mapped[str | None] = mapped_column(
+        TSVECTOR, sa.Computed("to_tsvector('english', text)", persisted=True), nullable=True
+    )
+
+    meeting: Mapped[Meeting] = relationship(back_populates="chunks")

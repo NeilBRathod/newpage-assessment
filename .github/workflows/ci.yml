@@ -17,6 +17,26 @@ jobs:
     defaults:
       run:
         working-directory: api
+
+    # Integration tests need real Postgres: the schema uses pgvector, ARRAY and
+    # a generated tsvector column that no in-memory database implements. They
+    # skip when MEETINGIQ_TEST_DATABASE_URL is unset, so this service is what
+    # makes them actually run.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: meetingiq
+          POSTGRES_PASSWORD: meetingiq
+          POSTGRES_DB: meetingiq_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U meetingiq"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v4
 
@@ -36,11 +56,32 @@ jobs:
       - name: Format check
         run: ruff format --check src tests
 
-      # No database service here yet: every test in this phase runs against
-      # fakes. The Postgres + pgvector service arrives in phase 3 alongside the
-      # first integration tests that need it.
       - name: Test
+        env:
+          MEETINGIQ_TEST_DATABASE_URL: postgresql+psycopg://meetingiq:meetingiq@localhost:5432/meetingiq_test
         run: pytest -q
+
+      # A skipped integration test looks identical to a passing one in the
+      # summary line, so assert they actually ran.
+      - name: Assert integration tests were not skipped
+        env:
+          MEETINGIQ_TEST_DATABASE_URL: postgresql+psycopg://meetingiq:meetingiq@localhost:5432/meetingiq_test
+        run: |
+          output=$(pytest tests/test_ingest_pipeline.py -q --no-header)
+          echo "$output"
+          if echo "$output" | grep -q "skipped"; then
+            echo "::error::Integration tests skipped — the Postgres service is not reachable."
+            exit 1
+          fi
+
+      - name: Check migrations match the models
+        env:
+          MEETINGIQ_DATABASE_URL: postgresql+psycopg://meetingiq:meetingiq@localhost:5432/meetingiq_test
+        run: |
+          alembic upgrade head
+          # Autogenerate against an up-to-date database must produce no changes;
+          # a non-empty diff means the models and migrations have drifted.
+          alembic check
 
   web:
     name: Web — typecheck & build

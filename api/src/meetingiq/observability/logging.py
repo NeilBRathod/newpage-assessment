@@ -1,5 +1,10 @@
 """Structured JSON logging.
 
+Note when adding fields via `extra=`: LogRecord has its own attributes and
+logging raises KeyError if you shadow one. `filename`, `module`, `name`,
+`args`, `levelname`, `process` and `thread` are the ones most likely to be
+reached for — prefix them (`source_filename`) rather than fight it.
+
 A ~40-line formatter rather than a logging library: JSON lines on stdout is
 exactly what CloudWatch, Loki and friends ingest, and keeping it in-repo means
 the log shape is visible and testable instead of configured somewhere opaque.
