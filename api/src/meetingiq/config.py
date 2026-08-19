@@ -45,6 +45,23 @@ class Settings(BaseSettings):
     embedding_model: str = "embeddinggemma:300m"
     embedding_dimensions: int = 768
 
+    # How long Ollama keeps the embedding model resident. It is small, and a
+    # reload adds ~15s to whichever question triggers it.
+    embedding_keep_alive: str = "30m"
+
+    # Gemma 4 reasons internally before answering. That reasoning is stripped
+    # from the response but still consumes the output budget and, more to the
+    # point, real time — on a laptop it is the difference between a 20-second
+    # answer and a 60-second one. Grounded QA over retrieved excerpts is mostly
+    # reading and attributing rather than multi-step reasoning, so it is off by
+    # default. Measured 3x slower and, on the same budget, truncated:
+    # see docs/MEASUREMENTS.md.
+    enable_thinking: bool = False
+
+    # Generous because thinking tokens, when enabled, come out of the same
+    # budget as the answer.
+    max_answer_tokens: int = 2048
+
     # Ollama defaults num_ctx to 2048 no matter what the model actually supports.
     # Left unset, retrieved context is silently truncated and the model answers
     # from almost nothing — the single easiest way to get a quietly broken RAG
@@ -63,8 +80,13 @@ class Settings(BaseSettings):
     retrieval_candidates: int = 20
     retrieval_top_k: int = 8
     rrf_k: int = 60
-    # Below this fused score the question is refused without calling the LLM.
-    min_retrieval_score: float = 0.02
+    # Top-1 cosine similarity below which a question is refused without paying
+    # for a generation. Deliberately low: measured on the seed corpus, similarity
+    # does NOT separate answerable from unanswerable questions (the ranges
+    # overlap by 0.09), so this catches only the genuinely unrelated — "what is
+    # the capital of France?" at 0.069, a prompt injection at 0.159 — and leaves
+    # the near-misses to the generator. See docs/MEASUREMENTS.md.
+    min_retrieval_score: float = 0.20
     # Hard ceiling on assembled context, well inside num_ctx to leave room for
     # the system prompt, the question, and the answer.
     max_context_tokens: int = 12000
