@@ -1,0 +1,56 @@
+# Only Postgres runs here by default.
+#
+# Ollama needs the Mac's GPU, which Docker on macOS cannot reach — a
+# containerised model falls back to CPU and becomes unusably slow. That puts
+# Ollama on the host, and once it is there, containerising the API only buys a
+# wall we would immediately have to drill through to reach it. So the app runs
+# natively (`make dev`) and Docker carries the one dependency that is genuinely
+# painful to install by hand: Postgres with the pgvector extension.
+#
+# The containerised path still exists and is still tested — `make docker-up`
+# starts the `full` profile below, and CI builds the API image on every PR so
+# the deployment artifact cannot silently rot. See docs/PLAN.md.
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-meetingiq}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-meetingiq}
+      POSTGRES_DB: ${POSTGRES_DB:-meetingiq}
+    ports:
+      # Non-default host port so a local Postgres on 5432 keeps working.
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Enables the pgvector extension on first boot.
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-meetingiq} -d ${POSTGRES_DB:-meetingiq}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # Not started by `make up`. `make docker-up` enables this profile to verify
+  # the containerised path end to end.
+  api:
+    profiles: [full]
+    build: ./api
+    environment:
+      MEETINGIQ_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-meetingiq}:${POSTGRES_PASSWORD:-meetingiq}@db:5432/${POSTGRES_DB:-meetingiq}
+      # Only inside a container is the host reached by this name; running
+      # natively, the API talks to plain localhost.
+      MEETINGIQ_OLLAMA_BASE_URL: http://host.docker.internal:11434
+    ports:
+      - "${MEETINGIQ_API_HOST_PORT:-8000}:8000"
+    volumes:
+      - ./seed:/app/seed:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    extra_hosts:
+      # Required on Linux; already resolves on Docker Desktop.
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  pgdata:
