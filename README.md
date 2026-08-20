@@ -11,7 +11,7 @@ the NewPage technical assessment (Option 3). Runs entirely on your machine.
 **Ask** — answers with the source in the margin beside each claim; click one and
 the transcript opens at that moment. The evidence panel shows everything the
 retriever returned, not just what got cited — seeing what the model chose *not*
-to use is most of what auditing an answer means.
+to use is most of what auditing means.
 
 **Brief** — per meeting: summary, decisions, who committed to what. Not RAG;
 extracted once and read from Postgres.
@@ -227,12 +227,20 @@ What I had to catch: a guardrail that implemented the plan faithfully and would
 have silently rejected real questions; margin provenance that printed "Marcus
 Webb +4" beside a claim Marcus never made; an extraction schema with `due`
 optional, so the model declined to populate it 24 times out of 24 with nothing
-appearing wrong. My rules: never merge a diff I can't explain, and run the thing
-— most of the real bugs here were invisible in review and obvious on sight.
+appearing wrong. My rules: never merge a diff I can't explain, and run the
+thing — most of the real bugs here were invisible in review, obvious on sight.
 
 ## Next
 
-A **reranker**, for the vocabulary mismatch hybrid search can't fix.
+**Resumable sessions.** Questions are standalone today. A `sessions` table and a
+`session_id` on `query_traces` would make a trace a conversation turn, but the
+real work is retrieval: *"why did they change it?"* embeds to nothing useful, so
+a follow-up needs rewriting into a standalone question before it hits the floor.
+
+**Grouping the action board by meeting** as well as by owner — both groupings in
+one response, so the toggle costs no refetch.
+
+Then: a **reranker**, for the vocabulary mismatch hybrid search can't fix.
 **Entailment checking**, to close the gap between "cited" and "grounded".
 **Auth and multi-tenancy**, before this touches a real transcript.
 **Utterance-level citations** — answers cite a chunk spanning a median of 12
