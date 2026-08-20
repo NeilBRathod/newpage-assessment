@@ -108,3 +108,67 @@ simultaneously (8.1GB + 0.7GB), so the embedding model is pinned with
 Generation dominates, and it is the reason the API streams by default and emits
 retrieved excerpts *before* the first token: the user has something to read
 after ~1s rather than staring at nothing for 40.
+
+
+## 5. Extraction, and whether it invents things
+
+Per-meeting briefs (summary, decisions, action items) are produced by one
+constrained-decoding pass over the whole transcript. Two things make that more
+trustworthy than asking a model for JSON and hoping.
+
+**Decoding is constrained.** Ollama takes a JSON schema and restricts token
+selection to it, so the output parses by construction rather than by luck.
+
+**Every item carries a verbatim quote, matched back against the transcript.**
+If the model invents an item, its quote will not appear in any turn. That turns
+"the model might be making things up" from a worry into a number.
+
+Measured over the seed corpus (`gemma4:12b`, forced re-extraction of all eight
+meetings, ~35s each):
+
+**17 decisions and 24 action items across 8 meetings in 306s. 39 of 41 quotes
+(95.1%) matched a real turn.** Per meeting:
+
+| Meeting | decisions | actions | traced |
+|---|---|---|---|
+| Relay Kickoff | 2 | 3 | **4 / 5** |
+| Architecture Review | 3 | 2 | 5 / 5 |
+| Sprint 3 Planning | 2 | 4 | 6 / 6 |
+| Meridian Advisory Call | 1 | 1 | 2 / 2 |
+| Q2 Budget Review | 3 | 1 | 4 / 4 |
+| Incident Postmortem | 1 | 5 | 6 / 6 |
+| Dashboard Design Review | 2 | 5 | **6 / 7** |
+| Beta Go/No-Go | 3 | 3 | 6 / 6 |
+
+The two misses are the interesting ones. On the kickoff the model produced:
+
+> "So let's **provisionly** go with option one, extend the ledger, and Dana, you
+> benchmark it properly."
+
+The transcript says "provision**ally**". The extracted decision is *correct* —
+that is what Priya decided — but the quote was reconstructed from memory rather
+than copied, and the matcher caught it. That is the mechanism working: the item
+is stored, flagged `unverified` in the UI, and counted.
+
+Matching deliberately normalises smart quotes, dashes and whitespace, because a
+model rewriting `'` as `’` is not fabrication. It deliberately does **not**
+normalise spelling, which is why the near-miss above was caught rather than
+waved through. Quotes under 12 characters never match — "Yes" appears in every
+meeting and proves nothing.
+
+The second miss, in the design review, is a quote the model stitched together
+across two turns. Both failures share a shape: the *content* was right and the
+*attribution* was reconstructed. That is precisely the class of error worth
+surfacing to a reader, and precisely the class a model's own confidence score
+would not catch.
+
+### One field that had to be forced
+
+`due` was initially optional in the schema, and the model omitted it on **every
+single action item** across all eight meetings — even where the transcript said
+"by Friday the twelfth". Making it required (with the prompt allowing an empty
+string) fixed it immediately: **12 of 24** action items now carry a deadline,
+which is roughly how many were actually given one in the transcripts.
+
+This is worth noting as a general lesson about constrained decoding: an optional
+field is one the model will quietly decline to think about.

@@ -43,6 +43,16 @@ class EmbeddingProvider(Protocol):
 
 @runtime_checkable
 class LLMProvider(Protocol):
-    def generate(self, *, system: str, prompt: str, max_tokens: int = 1024) -> str: ...
+    def generate(
+        self,
+        *,
+        system: str,
+        prompt: str,
+        max_tokens: int = 1024,
+        # A JSON schema constrains decoding so the response parses by
+        # construction. Asked politely for JSON, a 12B model returns prose in a
+        # code fence often enough to matter; asked under a schema, it cannot.
+        schema: dict | None = None,
+    ) -> str: ...
 
     def stream(self, *, system: str, prompt: str, max_tokens: int = 1024) -> Iterator[str]: ...

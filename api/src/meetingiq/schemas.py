@@ -87,3 +87,58 @@ class UtteranceOut(BaseModel):
 class TranscriptOut(BaseModel):
     meeting: MeetingSummary
     utterances: list[UtteranceOut]
+
+
+class GroundedOut(BaseModel):
+    """An extracted record and where it came from.
+
+    `utterance_seq` is null when the model's quote could not be found in the
+    transcript. The UI shows that state rather than hiding it — an unverifiable
+    item is exactly the one a reader should look at hardest.
+    """
+
+    quote: str
+    utterance_seq: int | None
+    speaker: str | None
+    start_s: float | None
+
+    @property
+    def grounded(self) -> bool:
+        return self.utterance_seq is not None
+
+
+class DecisionOut(GroundedOut):
+    id: str
+    text: str
+
+
+class ActionItemOut(GroundedOut):
+    id: str
+    description: str
+    owner: str
+    due: str | None
+    meeting_id: str
+    meeting_title: str
+    meeting_date: str | None
+
+
+class BriefOut(BaseModel):
+    meeting: MeetingSummary
+    summary: str
+    decisions: list[DecisionOut]
+    action_items: list[ActionItemOut]
+    extracted_at: str | None
+    # How many of this brief's items could be traced back to a real turn.
+    grounded_count: int
+    total_count: int
+
+
+class OwnerActions(BaseModel):
+    owner: str
+    items: list[ActionItemOut]
+
+
+class ActionBoard(BaseModel):
+    owners: list[OwnerActions]
+    total: int
+    ungrounded: int

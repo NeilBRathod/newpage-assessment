@@ -72,6 +72,10 @@ seed: ## Ingest the seed corpus (needs `make up` and Ollama)
 	cd api && .venv/bin/alembic upgrade head
 	cd api && .venv/bin/python -m meetingiq.ingest.cli ../seed/transcripts
 
+.PHONY: brief
+brief: ## Extract briefs for every meeting (~35s each; otherwise lazy on first view)
+	cd api && .venv/bin/python -m meetingiq.extraction.cli
+
 .PHONY: migrate
 migrate: ## Apply database migrations
 	cd api && .venv/bin/alembic upgrade head

@@ -11,6 +11,7 @@ interface Props {
   filter: Filter;
   onFilterChange: (filter: Filter) => void;
   onToggleSelect: (id: string) => void;
+  onOpenBrief: (id: string) => void;
   totalUtterances: number;
   totalSpeakers: number;
 }
@@ -19,7 +20,7 @@ const CHIP_PALETTE = ["#ececec", "#e6f4f3", "#f2f2f2"];
 
 export function MeetingRail({
   meetings, citedMeetingIds, citationCounts, selectedIds, filter,
-  onFilterChange, onToggleSelect, totalUtterances, totalSpeakers,
+  onFilterChange, onToggleSelect, onOpenBrief, totalUtterances, totalSpeakers,
 }: Props) {
   const visible = filter === "cited"
     ? meetings.filter((m) => citedMeetingIds.has(m.id))
@@ -58,6 +59,7 @@ export function MeetingRail({
             citationCount={citationCounts.get(meeting.id) ?? 0}
             selected={selectedIds.includes(meeting.id)}
             onClick={() => onToggleSelect(meeting.id)}
+            onOpenBrief={() => onOpenBrief(meeting.id)}
           />
         ))}
         {visible.length === 0 && (
@@ -106,13 +108,14 @@ function FilterPill({
 }
 
 function MeetingCard({
-  meeting, cited, citationCount, selected, onClick,
+  meeting, cited, citationCount, selected, onClick, onOpenBrief,
 }: {
   meeting: Meeting;
   cited: boolean;
   citationCount: number;
   selected: boolean;
   onClick: () => void;
+  onOpenBrief: () => void;
 }) {
   const shown = meeting.participants.slice(0, 4);
   const overflow = meeting.participants.length - shown.length;
@@ -146,6 +149,23 @@ function MeetingCard({
       </div>
 
       <div className="flex justify-between items-center mt-2">
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenBrief();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.stopPropagation();
+              onOpenBrief();
+            }
+          }}
+          className="font-mono text-[9px] text-faint hover:text-brand transition-colors mr-2"
+        >
+          brief →
+        </span>
         <div className="flex" aria-label={meeting.participants.join(", ")}>
           {shown.map((name, i) => (
             <span

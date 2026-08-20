@@ -63,9 +63,18 @@ class FakeLLMProvider:
     def __init__(self, response: str = "A fake answer."):
         self.response = response
         self.prompts: list[tuple[str, str]] = []
+        self.schemas: list[dict | None] = []
 
-    def generate(self, *, system: str, prompt: str, max_tokens: int = 1024) -> str:
+    def generate(
+        self,
+        *,
+        system: str,
+        prompt: str,
+        max_tokens: int = 1024,
+        schema: dict | None = None,
+    ) -> str:
         self.prompts.append((system, prompt))
+        self.schemas.append(schema)
         return self.response
 
     def stream(self, *, system: str, prompt: str, max_tokens: int = 1024) -> Iterator[str]:

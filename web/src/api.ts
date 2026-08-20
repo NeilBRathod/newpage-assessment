@@ -163,3 +163,46 @@ export function askStream(
 
   return () => controller.abort();
 }
+
+export interface Grounded {
+  quote: string;
+  /** Null when the model's quote was not found in the transcript. */
+  utterance_seq: number | null;
+  speaker: string | null;
+  start_s: number | null;
+}
+
+export interface Decision extends Grounded {
+  id: string;
+  text: string;
+}
+
+export interface ActionItem extends Grounded {
+  id: string;
+  description: string;
+  owner: string;
+  due: string | null;
+  meeting_id: string;
+  meeting_title: string;
+  meeting_date: string | null;
+}
+
+export interface Brief {
+  meeting: Meeting;
+  summary: string;
+  decisions: Decision[];
+  action_items: ActionItem[];
+  extracted_at: string | null;
+  grounded_count: number;
+  total_count: number;
+}
+
+export interface ActionBoard {
+  owners: { owner: string; items: ActionItem[] }[];
+  total: number;
+  ungrounded: number;
+}
+
+/** Extraction is lazy: the first call for a meeting runs the model (~60s). */
+export const fetchBrief = (id: string) => getJSON<Brief>(`/meetings/${id}/brief`);
+export const fetchActions = () => getJSON<ActionBoard>("/actions");
