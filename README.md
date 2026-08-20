@@ -42,5 +42,5 @@ Ollama, which for meeting data is a product decision as much as a cost one.
 - [x] Phase 4 — retrieval + RAG
 - [x] Phase 5 — Ask UI (end-to-end demoable)
 - [x] Phase 6 — extraction, Brief + Actions
-- [ ] Phase 7 — observability + evals
+- [x] Phase 7 — observability + evals
 - [ ] Phase 8 — documentation

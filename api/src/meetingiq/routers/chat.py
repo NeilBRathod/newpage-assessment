@@ -18,6 +18,7 @@ from meetingiq.config import Settings, get_settings
 from meetingiq.db import get_session
 from meetingiq.llm.base import EmbeddingProvider, LLMProvider
 from meetingiq.llm.registry import get_embedding_provider, get_llm_provider
+from meetingiq.observability import traces
 from meetingiq.rag.answer import AnswerResult, answer_question, stream_answer
 from meetingiq.schemas import AskRequest, AskResponse, ExcerptOut
 
@@ -73,6 +74,7 @@ def ask(
             llm=llm,
             meeting_ids=request.meeting_ids,
         )
+        traces.record(session, result, settings)
         return _to_response(result)
 
     def events() -> Iterator[str]:
@@ -99,6 +101,7 @@ def ask(
                     case "refusal":
                         yield _sse("refusal", payload)
                     case "done":
+                        traces.record(session, payload, settings)
                         yield _sse("done", _to_response(payload).model_dump())
         except Exception as exc:
             # The response has already started, so an exception here cannot

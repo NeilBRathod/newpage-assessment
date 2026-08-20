@@ -206,3 +206,46 @@ export interface ActionBoard {
 /** Extraction is lazy: the first call for a meeting runs the model (~60s). */
 export const fetchBrief = (id: string) => getJSON<Brief>(`/meetings/${id}/brief`);
 export const fetchActions = () => getJSON<ActionBoard>("/actions");
+
+export interface RetrievedRow {
+  index: number;
+  chunk_id: string;
+  meeting: string;
+  vector_rank: number | null;
+  text_rank: number | null;
+  similarity: number | null;
+  rrf: number;
+  cited: boolean;
+}
+
+export interface Trace {
+  id: string;
+  created_at: string;
+  question: string;
+  answer: string;
+  refused: boolean;
+  refusal_reason: string | null;
+  retrieved: RetrievedRow[];
+  citations: number[];
+  invalid_citations: number[];
+  filters_applied: string;
+  top_similarity: number | null;
+  excerpt_count: number;
+  context_tokens: number;
+  retrieval_ms: number;
+  generation_ms: number;
+  generation_model: string;
+}
+
+export interface TraceList {
+  stats: {
+    total: number;
+    refused: number;
+    with_invalid_citations: number;
+    p50_generation_ms: number | null;
+    p95_generation_ms: number | null;
+  };
+  traces: Trace[];
+}
+
+export const fetchTraces = () => getJSON<TraceList>("/traces");

@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from meetingiq import __version__
 from meetingiq.config import get_settings
 from meetingiq.observability.logging import configure_logging
-from meetingiq.routers import briefs, chat, health, meetings
+from meetingiq.routers import briefs, chat, health, meetings, traces
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +58,7 @@ def create_app() -> FastAPI:
     app.include_router(meetings.router)
     app.include_router(chat.router)
     app.include_router(briefs.router)
+    app.include_router(traces.router)
     return app
 
 
