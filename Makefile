@@ -97,6 +97,10 @@ testdb: ## Create the integration-test database if it does not exist
 		|| $(COMPOSE) exec -T db psql -U $${POSTGRES_USER:-meetingiq} -d postgres \
 		-c 'CREATE DATABASE meetingiq_test'
 
+.PHONY: eval
+eval: ## Run the evaluation golden set against the real model (a few minutes)
+	cd api && PYTHONPATH=src .venv/bin/python evals/run_eval.py
+
 .PHONY: lint
 lint: ## Lint and format-check
 	cd api && .venv/bin/ruff check src tests && .venv/bin/ruff format --check src tests

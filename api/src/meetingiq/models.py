@@ -14,6 +14,7 @@ import sqlalchemy as sa
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Date,
     DateTime,
     Float,
@@ -25,7 +26,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, TSVECTOR, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from meetingiq.db import Base
@@ -181,3 +182,44 @@ class ActionItem(Base, _Grounded):
     due: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     meeting: Mapped[Meeting] = relationship(back_populates="action_items")
+
+
+class QueryTrace(Base):
+    """One answered question, recorded in full.
+
+    Written for every query, including refusals. A RAG system fails in ways that
+    look identical from the outside — the retriever missed it, the context was
+    truncated, the model ignored what it was given — and without a record of what
+    was retrieved and at what score, distinguishing those after the fact is
+    guesswork. This is the difference between "it gave a bad answer" and "it gave
+    a bad answer because rank 1 was 0.31 and the right chunk was rank 12".
+    """
+
+    __tablename__ = "query_traces"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+
+    question: Mapped[str] = mapped_column(Text)
+    answer: Mapped[str] = mapped_column(Text)
+    refused: Mapped[bool] = mapped_column(Boolean, default=False)
+    refusal_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # What retrieval did: chunk ids, ranks and scores, enough to reconstruct the
+    # ranking without re-running it.
+    retrieved: Mapped[list[dict]] = mapped_column(JSONB, default=list)
+    citations: Mapped[list[int]] = mapped_column(ARRAY(Integer), default=list)
+    invalid_citations: Mapped[list[int]] = mapped_column(ARRAY(Integer), default=list)
+
+    filters_applied: Mapped[str] = mapped_column(String(500), default="none")
+    top_similarity: Mapped[float | None] = mapped_column(Float, nullable=True)
+    excerpt_count: Mapped[int] = mapped_column(Integer, default=0)
+    context_tokens: Mapped[int] = mapped_column(Integer, default=0)
+
+    retrieval_ms: Mapped[int] = mapped_column(Integer, default=0)
+    generation_ms: Mapped[int] = mapped_column(Integer, default=0)
+
+    provider: Mapped[str] = mapped_column(String(32), default="")
+    generation_model: Mapped[str] = mapped_column(String(128), default="")

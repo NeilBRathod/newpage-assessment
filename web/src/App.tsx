@@ -10,12 +10,13 @@ import { EvidencePanel } from "./components/EvidencePanel";
 import { ActionsPane } from "./components/ActionsPane";
 import { BriefPane } from "./components/BriefPane";
 import { MeetingRail } from "./components/MeetingRail";
+import { TracesPane } from "./components/TracesPane";
 
 // Mirrors MEETINGIQ_MIN_RETRIEVAL_SCORE. Display only — the server owns the
 // decision; this just labels the axis on the refusal chart.
 const MIN_RETRIEVAL_SCORE = 0.2;
 
-type View = "ask" | "brief" | "actions";
+type View = "ask" | "brief" | "actions" | "traces";
 
 export default function App() {
   const [meetings, setMeetings] = useState<Meeting[] | null>(null);
@@ -193,7 +194,9 @@ export default function App() {
           }
         />
 
-        {view === "actions" ? (
+        {view === "traces" ? (
+          <TracesPane />
+        ) : view === "actions" ? (
           <ActionsPane
             onOpenMeeting={(id) => {
               setBriefMeetingId(id);
@@ -302,6 +305,7 @@ function Tabs({
     { id: "ask", label: "Ask", enabled: true },
     { id: "brief", label: briefTitle ? "Brief" : "Brief", enabled: briefTitle !== null },
     { id: "actions", label: "Actions", enabled: true },
+    { id: "traces", label: "Traces", enabled: true },
   ];
 
   return (

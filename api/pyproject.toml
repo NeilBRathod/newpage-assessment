@@ -14,6 +14,9 @@ dependencies = [
     "alembic>=1.14",
     "httpx>=0.28",
     "python-multipart>=0.0.20",
+    # The eval golden set is YAML: it is written and read by people, and
+    # comments explaining why a case exists are the most valuable part of it.
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
