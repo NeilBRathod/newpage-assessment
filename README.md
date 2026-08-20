@@ -36,11 +36,11 @@ Ollama, which for meeting data is a product decision as much as a cost one.
 ## Build progress
 
 - [x] Phase 0 — plan
-- [ ] Phase 1 — scaffold, compose, CI
-- [ ] Phase 2 — transcript corpus
-- [ ] Phase 3 — ingestion pipeline
-- [ ] Phase 4 — retrieval + RAG
-- [ ] Phase 5 — Ask UI (end-to-end demoable)
+- [x] Phase 1 — scaffold, compose, CI
+- [x] Phase 2 — transcript corpus
+- [x] Phase 3 — ingestion pipeline
+- [x] Phase 4 — retrieval + RAG
+- [x] Phase 5 — Ask UI (end-to-end demoable)
 - [ ] Phase 6 — extraction, Brief + Actions
 - [ ] Phase 7 — observability + evals
 - [ ] Phase 8 — documentation

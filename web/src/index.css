@@ -1,1 +1,51 @@
 @import "tailwindcss";
+
+/* The Red Hat families are loaded by <link> in index.html, not by @import here:
+   a CSS @import must precede all other rules, and Tailwind's import expands
+   into rules, so a font import placed after it is silently dropped. */
+
+/* Design tokens.
+   Typeface and palette are taken from newpage.io's own stylesheet rather than
+   approximated: Red Hat Display is their brand face, and the teal, orange and
+   greys below are the values their theme actually ships. Radii are generous
+   (12-16px) for the same reason. */
+@theme {
+  --font-display: "Red Hat Display", Arial, sans-serif;
+  --font-text: "Red Hat Text", Arial, sans-serif;
+  --font-mono: "Red Hat Mono", ui-monospace, monospace;
+
+  /* Teal carries one meaning throughout: this is a source. */
+  --color-brand: #008c85;
+  --color-brand-dark: #00706b;
+  --color-brand-mid: #80c5c2;
+  --color-brand-tint: #e6f4f3;
+  --color-brand-wash: #f2faf9;
+
+  /* Orange carries one meaning: pay attention to this. */
+  --color-flag: #ff7f1f;
+  --color-flag-mid: #ffbf8f;
+  --color-flag-tint: #fff2e9;
+
+  --color-ink: #1f1f1f;
+  --color-body: #404040;
+  --color-muted: #6b6b6b;
+  --color-soft: #8a8a8a;
+  --color-faint: #b0b0b0;
+  --color-line: #ececec;
+  --color-line-strong: #e4e4e4;
+  --color-surface: #f7f7f7;
+  --color-raised: #fafafa;
+}
+
+html, body, #root { height: 100%; }
+body { margin: 0; background: var(--color-surface); color: var(--color-ink); font-family: var(--font-display); }
+
+/* The evidence stack and transcript both scroll; a heavy scrollbar fights the
+   quietness of the rest of the page. */
+.scroll-quiet { scrollbar-width: thin; scrollbar-color: #dcdcdc transparent; }
+.scroll-quiet::-webkit-scrollbar { width: 7px; }
+.scroll-quiet::-webkit-scrollbar-thumb { background: #dcdcdc; border-radius: 4px; }
+.scroll-quiet::-webkit-scrollbar-track { background: transparent; }
+
+@keyframes caret { 0%, 45% { opacity: 1; } 55%, 100% { opacity: 0.15; } }
+.caret { animation: caret 1s steps(1) infinite; }
