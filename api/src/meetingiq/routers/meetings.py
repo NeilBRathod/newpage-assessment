@@ -18,7 +18,7 @@ from meetingiq.schemas import MeetingSummary, TranscriptOut, UtteranceOut
 router = APIRouter(prefix="/meetings", tags=["meetings"])
 
 
-def _summarise(meeting: Meeting) -> MeetingSummary:
+def summarise(meeting: Meeting) -> MeetingSummary:
     return MeetingSummary(
         id=str(meeting.id),
         title=meeting.title,
@@ -37,7 +37,7 @@ def list_meetings(session: Annotated[Session, Depends(get_session)]) -> list[Mee
         # Newest first, but undated meetings should not sort to the top.
         select(Meeting).order_by(Meeting.meeting_date.desc().nullslast(), Meeting.created_at.desc())
     ).all()
-    return [_summarise(meeting) for meeting in meetings]
+    return [summarise(meeting) for meeting in meetings]
 
 
 @router.get("/{meeting_id}/transcript", response_model=TranscriptOut)
@@ -53,7 +53,7 @@ def get_transcript(
     ).all()
 
     return TranscriptOut(
-        meeting=_summarise(meeting),
+        meeting=summarise(meeting),
         utterances=[
             UtteranceOut(
                 seq=u.seq, speaker=u.speaker, start_s=u.start_s, end_s=u.end_s, text=u.text

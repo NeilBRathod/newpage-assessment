@@ -7,11 +7,15 @@ import { AnswerPane } from "./components/AnswerPane";
 import { AskBar } from "./components/AskBar";
 import { EmptyState } from "./components/EmptyState";
 import { EvidencePanel } from "./components/EvidencePanel";
+import { ActionsPane } from "./components/ActionsPane";
+import { BriefPane } from "./components/BriefPane";
 import { MeetingRail } from "./components/MeetingRail";
 
 // Mirrors MEETINGIQ_MIN_RETRIEVAL_SCORE. Display only — the server owns the
 // decision; this just labels the axis on the refusal chart.
 const MIN_RETRIEVAL_SCORE = 0.2;
+
+type View = "ask" | "brief" | "actions";
 
 export default function App() {
   const [meetings, setMeetings] = useState<Meeting[] | null>(null);
@@ -28,6 +32,8 @@ export default function App() {
   const [activeChunkId, setActiveChunkId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [filter, setFilter] = useState<"all" | "cited">("all");
+  const [view, setView] = useState<View>("ask");
+  const [briefMeetingId, setBriefMeetingId] = useState<string | null>(null);
 
   const abortRef = useRef<(() => void) | null>(null);
 
@@ -53,6 +59,7 @@ export default function App() {
       setActiveChunkId(null);
       setStreaming(true);
       setFilter("all");
+      setView("ask");
 
       abortRef.current = askStream(asked, selectedIds, {
         onExcerpts: (received) => {
@@ -98,6 +105,11 @@ export default function App() {
     setSelectedIds((current) =>
       current.includes(id) ? current.filter((x) => x !== id) : [...current, id],
     );
+  }, []);
+
+  const openBrief = useCallback((id: string) => {
+    setBriefMeetingId(id);
+    setView("brief");
   }, []);
 
   const { citedMeetingIds, citationCounts } = useMemo(() => {
@@ -165,12 +177,32 @@ export default function App() {
         filter={filter}
         onFilterChange={setFilter}
         onToggleSelect={toggleSelect}
+        onOpenBrief={openBrief}
         totalUtterances={totals.utterances}
         totalSpeakers={totals.speakers}
       />
 
       <section className="flex-grow flex flex-col overflow-hidden">
-        {asked ? (
+        <Tabs
+          view={view}
+          onChange={setView}
+          briefTitle={
+            briefMeetingId
+              ? (meetings.find((m) => m.id === briefMeetingId)?.title ?? null)
+              : null
+          }
+        />
+
+        {view === "actions" ? (
+          <ActionsPane
+            onOpenMeeting={(id) => {
+              setBriefMeetingId(id);
+              setView("brief");
+            }}
+          />
+        ) : view === "brief" && briefMeetingId ? (
+          <BriefPane meetingId={briefMeetingId} />
+        ) : asked ? (
           <AnswerPane
             question={question}
             answer={answer}
@@ -184,31 +216,35 @@ export default function App() {
           <Opening degraded={degraded} meetingCount={meetings.length} />
         )}
 
-        {askError && (
+        {view === "ask" && askError && (
           <p className="mx-9 mb-2 bg-flag-tint rounded-xl px-4 py-3 font-mono
                         text-[10.5px] text-body">
             {askError}
           </p>
         )}
 
-        <AskBar
-          streaming={streaming}
-          disabled={Boolean(degraded) && !asked}
-          selectedCount={selectedIds.length}
-          onAsk={ask}
-          onStop={stop}
-        />
+        {view === "ask" && (
+          <AskBar
+            streaming={streaming}
+            disabled={Boolean(degraded) && !asked}
+            selectedCount={selectedIds.length}
+            onAsk={ask}
+            onStop={stop}
+          />
+        )}
       </section>
 
-      <EvidencePanel
-        excerpts={excerpts}
-        citedIndices={result?.citations ?? []}
-        activeChunkId={activeChunkId}
-        onSelect={(excerpt) => setActiveChunkId(excerpt.chunk_id)}
-        refused={result?.refused ?? false}
-        topSimilarity={result?.top_similarity ?? null}
-        minScore={MIN_RETRIEVAL_SCORE}
-      />
+      {view === "ask" && (
+        <EvidencePanel
+          excerpts={excerpts}
+          citedIndices={result?.citations ?? []}
+          activeChunkId={activeChunkId}
+          onSelect={(excerpt) => setActiveChunkId(excerpt.chunk_id)}
+          refused={result?.refused ?? false}
+          topSimilarity={result?.top_similarity ?? null}
+          minScore={MIN_RETRIEVAL_SCORE}
+        />
+      )}
     </main>
   );
 }
@@ -251,5 +287,43 @@ function Opening({ degraded, meetingCount }: { degraded: string | null; meetingC
         </pre>
       )}
     </div>
+  );
+}
+
+/** Ask, Brief, Actions. The brief tab only exists once a meeting is chosen. */
+function Tabs({
+  view, onChange, briefTitle,
+}: {
+  view: View;
+  onChange: (view: View) => void;
+  briefTitle: string | null;
+}) {
+  const tabs: { id: View; label: string; enabled: boolean }[] = [
+    { id: "ask", label: "Ask", enabled: true },
+    { id: "brief", label: briefTitle ? "Brief" : "Brief", enabled: briefTitle !== null },
+    { id: "actions", label: "Actions", enabled: true },
+  ];
+
+  return (
+    <nav className="px-9 pt-5 flex gap-1 border-b border-line -mb-px">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          disabled={!tab.enabled}
+          onClick={() => onChange(tab.id)}
+          title={tab.id === "brief" && briefTitle ? briefTitle : undefined}
+          className={`text-[12.5px] font-medium px-3 py-2 border-b-2 -mb-px transition-colors ${
+            view === tab.id
+              ? "border-brand text-ink"
+              : tab.enabled
+                ? "border-transparent text-soft hover:text-body"
+                : "border-transparent text-line-strong cursor-not-allowed"
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </nav>
   );
 }

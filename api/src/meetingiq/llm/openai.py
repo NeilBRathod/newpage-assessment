@@ -94,8 +94,16 @@ class OpenAILLMProvider:
             headers={"Authorization": f"Bearer {settings.openai_api_key}"},
         )
 
-    def _payload(self, system: str, prompt: str, max_tokens: int, *, stream: bool) -> dict:
-        return {
+    def _payload(
+        self,
+        system: str,
+        prompt: str,
+        max_tokens: int,
+        *,
+        stream: bool,
+        schema: dict | None = None,
+    ) -> dict:
+        payload = {
             "model": self._settings.openai_generation_model,
             "messages": [
                 {"role": "system", "content": system},
@@ -104,12 +112,32 @@ class OpenAILLMProvider:
             "max_completion_tokens": max_tokens,
             "stream": stream,
         }
+        if schema is not None:
+            payload["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "extraction",
+                    # Strict mode requires every property to be required and
+                    # additionalProperties false; the schema is passed through
+                    # as authored, so keep it that way when adding fields.
+                    "strict": False,
+                    "schema": schema,
+                },
+            }
+        return payload
 
-    def generate(self, *, system: str, prompt: str, max_tokens: int = 1024) -> str:
+    def generate(
+        self,
+        *,
+        system: str,
+        prompt: str,
+        max_tokens: int = 1024,
+        schema: dict | None = None,
+    ) -> str:
         try:
             response = self._client.post(
                 f"{_BASE_URL}/chat/completions",
-                json=self._payload(system, prompt, max_tokens, stream=False),
+                json=self._payload(system, prompt, max_tokens, stream=False, schema=schema),
             )
             response.raise_for_status()
             return response.json()["choices"][0]["message"]["content"] or ""

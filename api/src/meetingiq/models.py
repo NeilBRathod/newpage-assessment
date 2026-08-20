@@ -48,6 +48,12 @@ class Meeting(Base):
 
     utterance_count: Mapped[int] = mapped_column(Integer, default=0)
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Extraction is lazy and cached: a full-transcript pass costs ~60s on a
+    # local model, which would make `make seed` an eight-minute wait for
+    # something most questions never need. Populated on first request.
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    extracted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     utterances: Mapped[list["Utterance"]] = relationship(
@@ -55,6 +61,12 @@ class Meeting(Base):
     )
     chunks: Mapped[list["Chunk"]] = relationship(
         back_populates="meeting", cascade="all, delete-orphan", order_by="Chunk.seq"
+    )
+    decisions: Mapped[list["Decision"]] = relationship(
+        back_populates="meeting", cascade="all, delete-orphan", order_by="Decision.seq"
+    )
+    action_items: Mapped[list["ActionItem"]] = relationship(
+        back_populates="meeting", cascade="all, delete-orphan", order_by="ActionItem.seq"
     )
 
 
@@ -124,3 +136,48 @@ class Chunk(Base):
     )
 
     meeting: Mapped[Meeting] = relationship(back_populates="chunks")
+
+
+class _Grounded:
+    """Fields shared by extracted records that must point back at the transcript.
+
+    `quote` is what the model claimed was said; `utterance_seq` is the turn it
+    was matched to, or NULL when no turn contained it. A null seq is the
+    interesting case — it means the model produced a quote that does not appear
+    in the transcript, which is the clearest fabrication signal available here.
+    """
+
+    quote: Mapped[str] = mapped_column(Text)
+    utterance_seq: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    speaker: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    start_s: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class Decision(Base, _Grounded):
+    __tablename__ = "decisions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    meeting_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("meetings.id", ondelete="CASCADE"), index=True
+    )
+    seq: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str] = mapped_column(Text)
+
+    meeting: Mapped[Meeting] = relationship(back_populates="decisions")
+
+
+class ActionItem(Base, _Grounded):
+    __tablename__ = "action_items"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    meeting_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("meetings.id", ondelete="CASCADE"), index=True
+    )
+    seq: Mapped[int] = mapped_column(Integer)
+    description: Mapped[str] = mapped_column(Text)
+    # Free text rather than a date: meetings say "by Friday" and "before GA",
+    # and coercing that to a date would invent precision nobody stated.
+    owner: Mapped[str] = mapped_column(String(200), index=True)
+    due: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+    meeting: Mapped[Meeting] = relationship(back_populates="action_items")

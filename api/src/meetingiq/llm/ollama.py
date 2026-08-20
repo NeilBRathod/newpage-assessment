@@ -93,8 +93,16 @@ class OllamaLLMProvider:
         self._settings = settings
         self._client = client or httpx.Client(timeout=settings.request_timeout_seconds)
 
-    def _payload(self, system: str, prompt: str, max_tokens: int, *, stream: bool) -> dict:
-        return {
+    def _payload(
+        self,
+        system: str,
+        prompt: str,
+        max_tokens: int,
+        *,
+        stream: bool,
+        schema: dict | None = None,
+    ) -> dict:
+        payload = {
             "model": self._settings.generation_model,
             "system": system,
             "prompt": prompt,
@@ -110,12 +118,22 @@ class OllamaLLMProvider:
                 "temperature": 0.2,
             },
         }
+        if schema is not None:
+            payload["format"] = schema
+        return payload
 
-    def generate(self, *, system: str, prompt: str, max_tokens: int = 1024) -> str:
+    def generate(
+        self,
+        *,
+        system: str,
+        prompt: str,
+        max_tokens: int = 1024,
+        schema: dict | None = None,
+    ) -> str:
         try:
             response = self._client.post(
                 f"{self._settings.ollama_base_url}/api/generate",
-                json=self._payload(system, prompt, max_tokens, stream=False),
+                json=self._payload(system, prompt, max_tokens, stream=False, schema=schema),
             )
             response.raise_for_status()
             return response.json()["response"]
