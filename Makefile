@@ -79,10 +79,12 @@ migrate: ## Apply database migrations
 .PHONY: test
 test: ## Run unit tests (offline — no Postgres or Ollama needed)
 	cd api && .venv/bin/pytest -q
+	cd web && npm test
 
 .PHONY: test-all
 test-all: testdb ## Run unit and integration tests (needs `make up`)
 	cd api && MEETINGIQ_TEST_DATABASE_URL=$(TEST_DATABASE_URL) .venv/bin/pytest -q
+	cd web && npm test
 
 .PHONY: testdb
 testdb: ## Create the integration-test database if it does not exist
